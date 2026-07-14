@@ -679,7 +679,9 @@ async function openReminderModal(type) {
     if (!modal) {
         modal = new bootstrap.Modal(modalEl);
     }
-    modal.show();
+    if (!modalEl.classList.contains('show')) {
+        modal.show();
+    }
     
     try {
         const res = await fetch(`/api/dashboard/reminders?type=${type}`);
@@ -777,8 +779,11 @@ function openReceivePaymentFromReminder(customerName, contactNumber, city) {
         document.getElementById('billContact').value = contactNumber;
         document.getElementById('billCity').value = city;
         
-        // Click to set type to DEBIT, which will fetch the Total Pending Credit using the filled details
-        document.getElementById('typeDebit').click();
+        // Clear paid amount
+        document.getElementById('billPaidAmount').value = '';
+        
+        // Click to set type to DEBIT
+        document.getElementById('typeDebit').checked = true;
         toggleEntryTypeMode(); // Ensure it runs to fetch the credit
     }, 300);
 }
@@ -1654,13 +1659,16 @@ async function openPaymentFromLedger() {
     
     if (customer) applyAutofill(customer, document.getElementById('billCustomerName'));
     
+    document.getElementById('billPaidAmount').value = '';
     document.getElementById('typeDebit').checked = true;
-    toggleEntryTypeMode();
+    await toggleEntryTypeMode();
     
     await loadProductsAndSalesmenForBill();
     
     bootstrap.Modal.getInstance(document.getElementById('ledgerModal')).hide();
-    new bootstrap.Modal(document.getElementById('billingModal')).show();
+    setTimeout(() => {
+        new bootstrap.Modal(document.getElementById('billingModal')).show();
+    }, 400);
 }
 
 function printLedger() {
