@@ -11,7 +11,10 @@ import java.nio.file.StandardCopyOption;
 import jakarta.annotation.PostConstruct;
 import java.util.TimeZone;
 
+import org.springframework.scheduling.annotation.EnableScheduling;
+
 @SpringBootApplication
+@EnableScheduling
 public class SalesDataApplication {
 
     @PostConstruct
