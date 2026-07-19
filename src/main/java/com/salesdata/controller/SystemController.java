@@ -116,24 +116,50 @@ public class SystemController {
                 backupData = lowerCaseBackupData;
             }
                 
-            // Disable foreign key checks
+            // Define insertion order to respect foreign keys
+            List<String> orderedTables = java.util.Arrays.asList(
+                "settings", "role_permissions", "error_logs", "test_parent", "users",
+                "products", "salesmen", "customers", "bills", "call_record", "sales_records", "support_ticket", "bill_items"
+            );
+            
+            // Reorder backupData keys based on orderedTables
+            List<String> tablesToRestore = new java.util.ArrayList<>();
+            for (String tbl : orderedTables) {
+                if (backupData.containsKey(tbl)) {
+                    tablesToRestore.add(tbl);
+                }
+            }
+            // Add any missing tables to the end just in case
+            for (String tbl : backupData.keySet()) {
+                if (!tablesToRestore.contains(tbl)) {
+                    tablesToRestore.add(tbl);
+                }
+            }
+                
+            // Disable foreign key checks or clear data
             if (isPostgres) {
-                for (String tableName : backupData.keySet()) {
-                    jdbcTemplate.execute("ALTER TABLE \"" + tableName + "\" DISABLE TRIGGER ALL;");
+                // In Postgres, we can't disable triggers without superuser.
+                // So we truncate all tables with CASCADE, and then insert in topological order.
+                if (!tablesToRestore.isEmpty()) {
+                    String truncateSql = "TRUNCATE TABLE " + 
+                        tablesToRestore.stream().map(t -> "\"" + t + "\"").collect(java.util.stream.Collectors.joining(", ")) + 
+                        " CASCADE";
+                    jdbcTemplate.execute(truncateSql);
                 }
             } else {
                 jdbcTemplate.execute("PRAGMA foreign_keys = OFF;");
             }
                 
             try {
-                for (Map.Entry<String, List<Map<String, Object>>> entry : backupData.entrySet()) {
-                    String tableName = entry.getKey();
-                    List<Map<String, Object>> rows = entry.getValue();
+                for (String tableName : tablesToRestore) {
+                    List<Map<String, Object>> rows = backupData.get(tableName);
+                    
+                    if (!isPostgres) {
+                        // Clear existing data (SQLite)
+                        jdbcTemplate.execute("DELETE FROM \"" + tableName + "\"");
+                    }
                         
-                    // Clear existing data
-                    jdbcTemplate.execute("DELETE FROM \"" + tableName + "\"");
-                        
-                    if (rows.isEmpty()) continue;
+                    if (rows == null || rows.isEmpty()) continue;
                         
                     // Insert rows
                     for (Map<String, Object> row : rows) {
@@ -167,12 +193,8 @@ public class SystemController {
                     }
                 }
             } finally {
-                // Re-enable foreign key checks
-                if (isPostgres) {
-                    for (String tableName : backupData.keySet()) {
-                        jdbcTemplate.execute("ALTER TABLE \"" + tableName + "\" ENABLE TRIGGER ALL;");
-                    }
-                } else {
+                // Re-enable foreign key checks for SQLite
+                if (!isPostgres) {
                     jdbcTemplate.execute("PRAGMA foreign_keys = ON;");
                 }
             }
