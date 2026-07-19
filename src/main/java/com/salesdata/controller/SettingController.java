@@ -70,4 +70,12 @@ public class SettingController {
         
         return ResponseEntity.ok("{\"message\": \"Settings updated successfully\"}");
     }
+
+    @GetMapping("/next-backup")
+    public ResponseEntity<Map<String, Long>> getNextBackupTime() {
+        Long nextTime = autoBackupScheduler != null ? autoBackupScheduler.getNextBackupTime() : null;
+        Map<String, Long> response = new HashMap<>();
+        response.put("nextBackupTime", nextTime);
+        return ResponseEntity.ok(response);
+    }
 }

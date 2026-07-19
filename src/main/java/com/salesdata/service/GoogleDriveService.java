@@ -65,4 +65,45 @@ public class GoogleDriveService {
             return false;
         }
     }
+
+    private Drive getDriveService() throws IOException {
+        if (credentialsJson == null || credentialsJson.trim().isEmpty()) {
+            throw new IOException("Google Drive credentials not provided.");
+        }
+        GoogleCredentials credentials = GoogleCredentials.fromStream(
+                new ByteArrayInputStream(credentialsJson.getBytes(StandardCharsets.UTF_8))
+        ).createScoped(Collections.singleton(DriveScopes.DRIVE_FILE));
+
+        return new Drive.Builder(
+                new NetHttpTransport(),
+                GsonFactory.getDefaultInstance(),
+                new HttpCredentialsAdapter(credentials))
+                .setApplicationName("Sales Data Auto Backup")
+                .build();
+    }
+
+    public String getLatestBackupFileId(String folderId) throws IOException {
+        Drive driveService = getDriveService();
+        String query = "mimeType='application/json'";
+        if (folderId != null && !folderId.trim().isEmpty()) {
+            query += " and '" + folderId.trim() + "' in parents";
+        }
+        
+        com.google.api.services.drive.model.FileList result = driveService.files().list()
+                .setQ(query)
+                .setOrderBy("createdTime desc")
+                .setPageSize(1)
+                .setFields("files(id, name, createdTime)")
+                .execute();
+
+        if (result.getFiles() != null && !result.getFiles().isEmpty()) {
+            return result.getFiles().get(0).getId();
+        }
+        return null;
+    }
+
+    public java.io.InputStream downloadFile(String fileId) throws IOException {
+        Drive driveService = getDriveService();
+        return driveService.files().get(fileId).executeMediaAsInputStream();
+    }
 }

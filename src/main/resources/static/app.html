@@ -795,11 +795,14 @@
                                 <div class="card-body">
                                     <p>Upload a database backup file to restore data.</p>
                                     <form id="restoreForm">
-                                        <div class="input-group">
+                                        <div class="input-group mb-3">
                                             <input type="file" class="form-control" id="restoreFile" accept=".json" required>
-                                            <button class="btn btn-danger" type="submit"><i class="bi bi-upload me-2"></i> Restore</button>
+                                            <button class="btn btn-danger" type="submit"><i class="bi bi-upload me-2"></i> Restore Local</button>
                                         </div>
                                     </form>
+                                    <hr>
+                                    <p class="mb-2">Or restore the latest backup from Google Drive:</p>
+                                    <button class="btn btn-outline-danger w-100" id="restoreDriveBtn"><i class="bi bi-google me-2"></i> Restore Latest from Google Drive</button>
                                 </div>
                             </div>
                         </div>
@@ -829,7 +832,10 @@
                                                 <label class="form-label">Google Drive Folder ID</label>
                                                 <input type="text" class="form-control" name="gdriveFolderId" id="setting_gdriveFolderId" placeholder="e.g. 1a2B3c4D5e6F7g8H9i0J">
                                             </div>
-                                            <div class="col-12 text-end mt-3">
+                                            <div class="col-12 d-flex justify-content-between align-items-center mt-3">
+                                                <div id="countdownContainer" class="text-muted" style="display: none;">
+                                                    <strong>Next Backup In:</strong> <span id="countdownTimer">--:--:--</span>
+                                                </div>
                                                 <button type="submit" class="btn btn-primary"><i class="bi bi-cloud-upload"></i> Save Auto-Backup Settings</button>
                                             </div>
                                         </div>

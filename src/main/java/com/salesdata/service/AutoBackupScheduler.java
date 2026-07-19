@@ -35,6 +35,11 @@ public class AutoBackupScheduler implements SchedulingConfigurer {
 
     private ScheduledTaskRegistrar taskRegistrar;
     private ScheduledFuture<?> scheduledFuture;
+    private Long nextBackupTime = null;
+
+    public Long getNextBackupTime() {
+        return nextBackupTime;
+    }
 
     @Override
     public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
@@ -48,6 +53,7 @@ public class AutoBackupScheduler implements SchedulingConfigurer {
         if (scheduledFuture != null) {
             scheduledFuture.cancel(false);
         }
+        nextBackupTime = null;
 
         boolean enabled = "true".equalsIgnoreCase(getSetting("autoBackupEnabled", "false"));
         if (!enabled) {
@@ -66,10 +72,14 @@ public class AutoBackupScheduler implements SchedulingConfigurer {
 
         long intervalMs = (24 * 60 * 60 * 1000L) / frequencyPerDay;
         logger.info("Auto Backup to Google Drive is ENABLED. Frequency: " + frequencyPerDay + " times/day (Every " + (intervalMs / 3600000) + " hours).");
+        
+        long startTime = System.currentTimeMillis() + intervalMs;
+        nextBackupTime = startTime;
 
         scheduledFuture = taskRegistrar.getScheduler().scheduleWithFixedDelay(() -> {
             performBackup();
-        }, new Date(System.currentTimeMillis() + intervalMs), intervalMs); // Start after first interval
+            nextBackupTime = System.currentTimeMillis() + intervalMs;
+        }, new Date(startTime), intervalMs); // Start after first interval
     }
 
     private void performBackup() {

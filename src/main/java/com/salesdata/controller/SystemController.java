@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.salesdata.service.GoogleDriveService;
 
 import java.io.File;
 import java.io.IOException;
@@ -41,6 +42,12 @@ public class SystemController {
 
     @Autowired
     private DataSource dataSource;
+
+    @Autowired
+    private com.salesdata.repository.SettingRepository settingRepository;
+
+    @Autowired
+    private com.salesdata.service.GoogleDriveService googleDriveService;
 
     @Autowired
     private ObjectMapper mapper;
@@ -104,119 +111,148 @@ public class SystemController {
                 new com.fasterxml.jackson.core.type.TypeReference<Map<String, List<Map<String, Object>>>>() {}
             );
             
-            boolean isPostgres = false;
-            try (Connection conn = dataSource.getConnection()) {
-                DatabaseMetaData metaData = conn.getMetaData();
-                String driver = metaData.getDriverName().toLowerCase();
-                isPostgres = driver.contains("postgresql");
-            }
-
-            // SQLite preserves case in table names, Postgres defaults to lowercase.
-            // If restoring from SQLite to Postgres, convert all table names AND column names to lowercase.
-            if (isPostgres) {
-                Map<String, List<Map<String, Object>>> lowerCaseBackupData = new HashMap<>();
-                for (Map.Entry<String, List<Map<String, Object>>> entry : backupData.entrySet()) {
-                    List<Map<String, Object>> newRows = new java.util.ArrayList<>();
-                    for (Map<String, Object> row : entry.getValue()) {
-                        Map<String, Object> newRow = new HashMap<>();
-                        for (Map.Entry<String, Object> col : row.entrySet()) {
-                            newRow.put(col.getKey().toLowerCase(), col.getValue());
-                        }
-                        newRows.add(newRow);
-                    }
-                    lowerCaseBackupData.put(entry.getKey().toLowerCase(), newRows);
-                }
-                backupData = lowerCaseBackupData;
-            }
-                
-            // Define insertion order to respect foreign keys
-            List<String> orderedTables = java.util.Arrays.asList(
-                "settings", "role_permissions", "error_logs", "test_parent", "users",
-                "products", "salesmen", "customers", "bills", "call_record", "sales_records", "support_ticket", "bill_items"
-            );
-            
-            // Reorder backupData keys based on orderedTables
-            List<String> tablesToRestore = new java.util.ArrayList<>();
-            for (String tbl : orderedTables) {
-                if (backupData.containsKey(tbl)) {
-                    tablesToRestore.add(tbl);
-                }
-            }
-            // Add any missing tables to the end just in case
-            for (String tbl : backupData.keySet()) {
-                if (!tablesToRestore.contains(tbl)) {
-                    tablesToRestore.add(tbl);
-                }
-            }
-                
-            // Disable foreign key checks or clear data
-            if (isPostgres) {
-                // In Postgres, we can't disable triggers without superuser.
-                // So we truncate all tables with CASCADE, and then insert in topological order.
-                if (!tablesToRestore.isEmpty()) {
-                    String truncateSql = "TRUNCATE TABLE " + 
-                        tablesToRestore.stream().map(t -> "\"" + t + "\"").collect(java.util.stream.Collectors.joining(", ")) + 
-                        " CASCADE";
-                    jdbcTemplate.execute(truncateSql);
-                }
-            } else {
-                jdbcTemplate.execute("PRAGMA foreign_keys = OFF;");
-            }
-                
-            try {
-                for (String tableName : tablesToRestore) {
-                    List<Map<String, Object>> rows = backupData.get(tableName);
-                    
-                    if (!isPostgres) {
-                        // Clear existing data (SQLite)
-                        jdbcTemplate.execute("DELETE FROM \"" + tableName + "\"");
-                    }
-                        
-                    if (rows == null || rows.isEmpty()) continue;
-                        
-                    // Insert rows
-                    for (Map<String, Object> row : rows) {
-                        StringBuilder sql = new StringBuilder("INSERT INTO \"").append(tableName).append("\" (");
-                        StringBuilder values = new StringBuilder(" VALUES (");
-                        Object[] params = new Object[row.size()];
-                        int i = 0;
-                        for (Map.Entry<String, Object> col : row.entrySet()) {
-                            sql.append("\"").append(col.getKey()).append("\"");
-                            values.append("?");
-                            params[i++] = col.getValue();
-                            if (i < row.size()) {
-                                sql.append(", ");
-                                values.append(", ");
-                            }
-                        }
-                        sql.append(")");
-                        values.append(")");
-                        jdbcTemplate.update(sql.toString() + values.toString(), params);
-                    }
-                }
-                    
-                // Reset sequences for PostgreSQL
-                if (isPostgres) {
-                    for (String tableName : backupData.keySet()) {
-                        try {
-                            jdbcTemplate.execute("SELECT setval(pg_get_serial_sequence('\"" + tableName + "\"', 'id'), COALESCE((SELECT MAX(id)+1 FROM \"" + tableName + "\"), 1), false)");
-                        } catch (Exception e) {
-                            // Ignore if no sequence or id column
-                        }
-                    }
-                }
-            } finally {
-                // Re-enable foreign key checks for SQLite
-                if (!isPostgres) {
-                    jdbcTemplate.execute("PRAGMA foreign_keys = ON;");
-                }
-            }
-            
+            restoreDatabaseFromMap(backupData);
             return ResponseEntity.ok("{\"message\": \"Database restored successfully from backup.\"}");
-            
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body("{\"message\": \"Failed to restore database: " + e.getMessage().replaceAll("\"", "'") + "\"}");
+        }
+    }
+
+    @PostMapping("/restore-from-drive")
+    @PreAuthorize("@customPermissionEvaluator.hasAccess(authentication, 'Settings', 'EDIT')")
+    public ResponseEntity<?> restoreFromGoogleDrive() {
+        try {
+            Optional<com.salesdata.entity.Setting> folderIdOpt = settingRepository.findById("gdriveFolderId");
+            String folderId = folderIdOpt.map(com.salesdata.entity.Setting::getValue).orElse("");
+            
+            String fileId = googleDriveService.getLatestBackupFileId(folderId);
+            if (fileId == null) {
+                return ResponseEntity.badRequest().body("{\"message\": \"No backup files found in Google Drive.\"}");
+            }
+            
+            try (java.io.InputStream is = googleDriveService.downloadFile(fileId)) {
+                Map<String, List<Map<String, Object>>> backupData = mapper.readValue(
+                    is, 
+                    new com.fasterxml.jackson.core.type.TypeReference<Map<String, List<Map<String, Object>>>>() {}
+                );
+                restoreDatabaseFromMap(backupData);
+            }
+            
+            return ResponseEntity.ok("{\"message\": \"Database restored successfully from Google Drive.\"}");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("{\"message\": \"Failed to restore from Google Drive: " + e.getMessage().replaceAll("\"", "'") + "\"}");
+        }
+    }
+
+    public void restoreDatabaseFromMap(Map<String, List<Map<String, Object>>> backupData) throws Exception {
+        boolean isPostgres = false;
+        try (Connection conn = dataSource.getConnection()) {
+            DatabaseMetaData metaData = conn.getMetaData();
+            String driver = metaData.getDriverName().toLowerCase();
+            isPostgres = driver.contains("postgresql");
+        }
+
+        // SQLite preserves case in table names, Postgres defaults to lowercase.
+        // If restoring from SQLite to Postgres, convert all table names AND column names to lowercase.
+        if (isPostgres) {
+            Map<String, List<Map<String, Object>>> lowerCaseBackupData = new HashMap<>();
+            for (Map.Entry<String, List<Map<String, Object>>> entry : backupData.entrySet()) {
+                List<Map<String, Object>> newRows = new java.util.ArrayList<>();
+                for (Map<String, Object> row : entry.getValue()) {
+                    Map<String, Object> newRow = new HashMap<>();
+                    for (Map.Entry<String, Object> col : row.entrySet()) {
+                        newRow.put(col.getKey().toLowerCase(), col.getValue());
+                    }
+                    newRows.add(newRow);
+                }
+                lowerCaseBackupData.put(entry.getKey().toLowerCase(), newRows);
+            }
+            backupData = lowerCaseBackupData;
+        }
+            
+        // Define insertion order to respect foreign keys
+        List<String> orderedTables = java.util.Arrays.asList(
+            "settings", "role_permissions", "error_logs", "test_parent", "users",
+            "products", "salesmen", "customers", "bills", "call_record", "sales_records", "support_ticket", "bill_items"
+        );
+        
+        // Reorder backupData keys based on orderedTables
+        List<String> tablesToRestore = new java.util.ArrayList<>();
+        for (String tbl : orderedTables) {
+            if (backupData.containsKey(tbl)) {
+                tablesToRestore.add(tbl);
+            }
+        }
+        // Add any missing tables to the end just in case
+        for (String tbl : backupData.keySet()) {
+            if (!tablesToRestore.contains(tbl)) {
+                tablesToRestore.add(tbl);
+            }
+        }
+            
+        // Disable foreign key checks or clear data
+        if (isPostgres) {
+            // In Postgres, we can't disable triggers without superuser.
+            // So we truncate all tables with CASCADE, and then insert in topological order.
+            if (!tablesToRestore.isEmpty()) {
+                String truncateSql = "TRUNCATE TABLE " + 
+                    tablesToRestore.stream().map(t -> "\"" + t + "\"").collect(java.util.stream.Collectors.joining(", ")) + 
+                    " CASCADE";
+                jdbcTemplate.execute(truncateSql);
+            }
+        } else {
+            jdbcTemplate.execute("PRAGMA foreign_keys = OFF;");
+        }
+            
+        try {
+            for (String tableName : tablesToRestore) {
+                List<Map<String, Object>> rows = backupData.get(tableName);
+                
+                if (!isPostgres) {
+                    // Clear existing data (SQLite)
+                    jdbcTemplate.execute("DELETE FROM \"" + tableName + "\"");
+                }
+                    
+                if (rows == null || rows.isEmpty()) continue;
+                    
+                // Insert rows
+                for (Map<String, Object> row : rows) {
+                    StringBuilder sql = new StringBuilder("INSERT INTO \"").append(tableName).append("\" (");
+                    StringBuilder values = new StringBuilder(" VALUES (");
+                    Object[] params = new Object[row.size()];
+                    int i = 0;
+                    for (Map.Entry<String, Object> col : row.entrySet()) {
+                        sql.append("\"").append(col.getKey()).append("\"");
+                        values.append("?");
+                        params[i++] = col.getValue();
+                        if (i < row.size()) {
+                            sql.append(", ");
+                            values.append(", ");
+                        }
+                    }
+                    sql.append(")");
+                    values.append(")");
+                    jdbcTemplate.update(sql.toString() + values.toString(), params);
+                }
+            }
+                
+            // Reset sequences for PostgreSQL
+            if (isPostgres) {
+                for (String tableName : backupData.keySet()) {
+                    try {
+                        jdbcTemplate.execute("SELECT setval(pg_get_serial_sequence('\"" + tableName + "\"', 'id'), COALESCE((SELECT MAX(id)+1 FROM \"" + tableName + "\"), 1), false)");
+                    } catch (Exception e) {
+                        // Ignore if no sequence or id column
+                    }
+                }
+            }
+        } finally {
+            // Re-enable foreign key checks for SQLite
+            if (!isPostgres) {
+                jdbcTemplate.execute("PRAGMA foreign_keys = ON;");
+            }
         }
     }
 }

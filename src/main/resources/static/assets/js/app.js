@@ -1943,6 +1943,30 @@ document.getElementById('restoreForm').addEventListener('submit', async (e) => {
     }
 });
 
+document.getElementById('restoreDriveBtn')?.addEventListener('click', async (e) => {
+    const btn = e.target;
+    const originalText = btn.innerHTML;
+    if (!confirm('Are you sure you want to restore the latest backup from Google Drive? This will overwrite your current data!')) return;
+    
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Restoring from Drive...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/system/restore-from-drive', { method: 'POST' });
+        let msg = 'An error occurred during restore.';
+        try {
+            const data = await res.json();
+            msg = data.message;
+        } catch (e) {}
+        alert(msg);
+    } catch (error) {
+        alert('An error occurred during restore.');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+});
+
 document.getElementById('settingsForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -1976,6 +2000,7 @@ document.getElementById('autoBackupForm').addEventListener('submit', async (e) =
         });
         if (res.ok) {
             alert('Auto-Backup Settings updated successfully!');
+            fetchNextBackupTime();
         } else {
             alert('Failed to update Auto-Backup Settings');
         }
@@ -1985,6 +2010,53 @@ document.getElementById('autoBackupForm').addEventListener('submit', async (e) =
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
     }
+});
+
+let backupCountdownInterval = null;
+
+async function fetchNextBackupTime() {
+    try {
+        const res = await fetch('/api/settings/next-backup');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        if (data.nextBackupTime) {
+            document.getElementById('countdownContainer').style.display = 'block';
+            if (backupCountdownInterval) clearInterval(backupCountdownInterval);
+            
+            backupCountdownInterval = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = data.nextBackupTime - now;
+                
+                if (distance < 0) {
+                    clearInterval(backupCountdownInterval);
+                    document.getElementById('countdownTimer').innerHTML = "Backup in progress...";
+                    // Fetch again after a minute to get the new time
+                    setTimeout(fetchNextBackupTime, 60000);
+                    return;
+                }
+                
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                
+                document.getElementById('countdownTimer').innerHTML = 
+                    hours.toString().padStart(2, '0') + ":" + 
+                    minutes.toString().padStart(2, '0') + ":" + 
+                    seconds.toString().padStart(2, '0');
+            }, 1000);
+        } else {
+            document.getElementById('countdownContainer').style.display = 'none';
+            if (backupCountdownInterval) clearInterval(backupCountdownInterval);
+        }
+    } catch (e) {
+        console.error("Failed to fetch next backup time", e);
+    }
+}
+
+// Call on load
+document.addEventListener('DOMContentLoaded', () => {
+    fetchNextBackupTime();
 });
 
 // ---------------- ERROR LOGS ----------------
