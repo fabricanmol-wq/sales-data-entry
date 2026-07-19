@@ -29,6 +29,7 @@ import java.sql.ResultSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.core.io.ByteArrayResource;
 
 @RestController
@@ -41,6 +42,9 @@ public class SystemController {
     @Autowired
     private DataSource dataSource;
 
+    @Autowired
+    private ObjectMapper mapper;
+
     @GetMapping("/backup")
     @PreAuthorize("@customPermissionEvaluator.hasAccess(authentication, 'Settings', 'CREATE')")
     public ResponseEntity<Resource> backupDatabase() {
@@ -48,7 +52,9 @@ public class SystemController {
             Map<String, List<Map<String, Object>>> backupData = new HashMap<>();
             try (Connection conn = dataSource.getConnection()) {
                 DatabaseMetaData metaData = conn.getMetaData();
-                try (ResultSet rs = metaData.getTables(null, null, "%", new String[]{"TABLE"})) {
+                String driver = metaData.getDriverName().toLowerCase();
+                String schema = driver.contains("postgresql") ? "public" : null;
+                try (ResultSet rs = metaData.getTables(null, schema, "%", new String[]{"TABLE"})) {
                     while (rs.next()) {
                         String tableName = rs.getString("TABLE_NAME");
                         if (tableName.startsWith("sqlite_") || tableName.startsWith("pg_")) continue;
@@ -58,7 +64,6 @@ public class SystemController {
                 }
             }
 
-            ObjectMapper mapper = new ObjectMapper();
             byte[] jsonBytes = mapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(backupData);
             Resource resource = new ByteArrayResource(jsonBytes);
 
