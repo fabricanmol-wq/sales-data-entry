@@ -2111,42 +2111,6 @@ document.getElementById('callingReportFilterForm').addEventListener('submit', (e
     loadCallingReports();
 });
 
-// --- New Customer Logic ---
-document.getElementById('newCustomerForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const data = Object.fromEntries(formData.entries());
-    
-    // We register a new customer by creating a zero-amount sales record
-    data.entryDate = getLocalDateString();
-    data.billAmount = 0;
-    data.discount = 0;
-    data.netAmount = 0;
-    data.creditAmount = 0;
-    data.givenAmount = 0;
-    data.quantity = 0;
-    data.salesman = null;
-    data.remarks = "Customer Registration";
-    
-    try {
-        const res = await fetch('/api/sales', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        if (res.ok) {
-            showNotification('Customer registered successfully');
-            bootstrap.Modal.getInstance(document.getElementById('newCustomerModal')).hide();
-            e.target.reset();
-            loadUniqueCustomersTable();
-        } else {
-            showNotification('Failed to register customer', 'danger');
-        }
-    } catch (e) {
-        showNotification('Error', 'danger');
-    }
-});
-
 // --- Stock Management Logic ---
 let productsList = [];
 
