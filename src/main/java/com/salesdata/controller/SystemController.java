@@ -107,11 +107,19 @@ public class SystemController {
             }
 
             // SQLite preserves case in table names, Postgres defaults to lowercase.
-            // If restoring from SQLite to Postgres, convert all table names to lowercase.
+            // If restoring from SQLite to Postgres, convert all table names AND column names to lowercase.
             if (isPostgres) {
                 Map<String, List<Map<String, Object>>> lowerCaseBackupData = new HashMap<>();
                 for (Map.Entry<String, List<Map<String, Object>>> entry : backupData.entrySet()) {
-                    lowerCaseBackupData.put(entry.getKey().toLowerCase(), entry.getValue());
+                    List<Map<String, Object>> newRows = new java.util.ArrayList<>();
+                    for (Map<String, Object> row : entry.getValue()) {
+                        Map<String, Object> newRow = new HashMap<>();
+                        for (Map.Entry<String, Object> col : row.entrySet()) {
+                            newRow.put(col.getKey().toLowerCase(), col.getValue());
+                        }
+                        newRows.add(newRow);
+                    }
+                    lowerCaseBackupData.put(entry.getKey().toLowerCase(), newRows);
                 }
                 backupData = lowerCaseBackupData;
             }
