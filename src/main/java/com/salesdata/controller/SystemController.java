@@ -101,7 +101,9 @@ public class SystemController {
                 
                 // Disable foreign key checks
                 if (isPostgres) {
-                    jdbcTemplate.execute("SET session_replication_role = 'replica';");
+                    for (String tableName : backupData.keySet()) {
+                        jdbcTemplate.execute("ALTER TABLE " + tableName + " DISABLE TRIGGER ALL;");
+                    }
                 } else {
                     jdbcTemplate.execute("PRAGMA foreign_keys = OFF;");
                 }
@@ -150,7 +152,9 @@ public class SystemController {
                 } finally {
                     // Re-enable foreign key checks
                     if (isPostgres) {
-                        jdbcTemplate.execute("SET session_replication_role = 'origin';");
+                        for (String tableName : backupData.keySet()) {
+                            jdbcTemplate.execute("ALTER TABLE " + tableName + " ENABLE TRIGGER ALL;");
+                        }
                     } else {
                         jdbcTemplate.execute("PRAGMA foreign_keys = ON;");
                     }
