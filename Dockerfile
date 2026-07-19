@@ -13,5 +13,8 @@ COPY --from=build /app/target/sales-data-entry-0.0.1-SNAPSHOT.jar app.jar
 # Expose port
 EXPOSE 8080
 
+# Use production profile on Render
+ENV SPRING_PROFILES_ACTIVE=prod
+
 # Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
