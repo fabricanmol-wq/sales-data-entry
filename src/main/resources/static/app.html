@@ -826,6 +826,9 @@
                                                     <option value="2">2 Times a Day (Every 12 hrs)</option>
                                                     <option value="4">4 Times a Day (Every 6 hrs)</option>
                                                     <option value="6">6 Times a Day (Every 4 hrs)</option>
+                                                    <option value="8">8 Times a Day (Every 3 hrs)</option>
+                                                    <option value="10">10 Times a Day (Every 2.4 hrs)</option>
+                                                    <option value="12">12 Times a Day (Every 2 hrs)</option>
                                                 </select>
                                             </div>
                                             <div class="col-md-5">
@@ -836,7 +839,10 @@
                                                 <div id="countdownContainer" class="text-muted" style="display: none;">
                                                     <strong>Next Backup In:</strong> <span id="countdownTimer">--:--:--</span>
                                                 </div>
-                                                <button type="submit" class="btn btn-primary"><i class="bi bi-cloud-upload"></i> Save Auto-Backup Settings</button>
+                                                <div>
+                                                    <button type="button" id="instantDriveBackupBtn" class="btn btn-outline-success me-2"><i class="bi bi-cloud-arrow-up"></i> Instant Backup in Google Drive</button>
+                                                    <button type="submit" class="btn btn-primary"><i class="bi bi-cloud-upload"></i> Save Auto-Backup Settings</button>
+                                                </div>
                                             </div>
                                         </div>
                                     </form>

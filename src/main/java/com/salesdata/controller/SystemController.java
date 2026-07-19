@@ -75,6 +75,33 @@ public class SystemController {
         }
     }
 
+    @PostMapping("/backup-to-drive")
+    @PreAuthorize("@customPermissionEvaluator.hasAccess(authentication, 'Settings', 'CREATE')")
+    public ResponseEntity<?> instantBackupToGoogleDrive() {
+        try {
+            Optional<com.salesdata.entity.Setting> folderIdOpt = settingRepository.findById("gdriveFolderId");
+            String folderId = folderIdOpt.map(com.salesdata.entity.Setting::getValue).orElse("");
+            
+            if (folderId.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("{\"message\": \"Google Drive is not configured. Please enter a valid Folder ID in settings.\"}");
+            }
+
+            String jsonString = generateBackupJsonString();
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String filename = "backup_sales_" + timestamp + ".json";
+            
+            boolean success = googleDriveService.uploadFile(folderId, filename, jsonString);
+            if (success) {
+                return ResponseEntity.ok("{\"message\": \"Database backed up successfully to Google Drive.\"}");
+            } else {
+                return ResponseEntity.internalServerError().body("{\"message\": \"Failed to upload backup to Google Drive.\"}");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("{\"message\": \"Error creating backup: " + e.getMessage().replaceAll("\"", "'") + "\"}");
+        }
+    }
+
     public String generateBackupJsonString() throws Exception {
         Map<String, List<Map<String, Object>>> backupData = new HashMap<>();
         List<String> tableNames = new java.util.ArrayList<>();

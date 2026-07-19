@@ -2059,6 +2059,34 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchNextBackupTime();
 });
 
+document.getElementById('instantDriveBackupBtn')?.addEventListener('click', async (e) => {
+    const btn = e.target;
+    const originalText = btn.innerHTML;
+    
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Backing up...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/system/backup-to-drive', { method: 'POST' });
+        let msg = 'An error occurred during backup.';
+        try {
+            const data = await res.json();
+            msg = data.message;
+        } catch (e) {}
+        alert(msg);
+        
+        // Refresh timer if backup succeeded
+        if (res.ok) {
+            fetchNextBackupTime();
+        }
+    } catch (error) {
+        alert('An error occurred during backup.');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+});
+
 // ---------------- ERROR LOGS ----------------
 async function loadErrorLogs() {
     try {
