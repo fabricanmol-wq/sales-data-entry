@@ -19,6 +19,9 @@ public class SettingController {
     @Autowired
     private SettingRepository settingRepository;
 
+    @Autowired(required = false)
+    private com.salesdata.service.AutoBackupScheduler autoBackupScheduler;
+
     @GetMapping
     public ResponseEntity<Map<String, String>> getAllSettings() {
         List<Setting> settings = settingRepository.findAll();
@@ -59,6 +62,12 @@ public class SettingController {
             s.setValue(entry.getValue());
             settingRepository.save(s);
         }
+        
+        // Trigger auto backup scheduler reload in case backup settings changed
+        if (autoBackupScheduler != null) {
+            autoBackupScheduler.scheduleBackupTask();
+        }
+        
         return ResponseEntity.ok("{\"message\": \"Settings updated successfully\"}");
     }
 }

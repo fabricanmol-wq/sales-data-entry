@@ -414,6 +414,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('setPrintTermsConditions').value = appSettings.printTermsConditions || '';
             document.getElementById('setPrintSignatory').value = appSettings.printSignatory || '';
             document.getElementById('setPrintPaperSize').value = appSettings.printPaperSize || 'A4';
+            
+            // Populate auto backup form
+            if(document.getElementById('setting_autoBackupEnabled')) document.getElementById('setting_autoBackupEnabled').value = appSettings.autoBackupEnabled || 'false';
+            if(document.getElementById('setting_autoBackupFrequency')) document.getElementById('setting_autoBackupFrequency').value = appSettings.autoBackupFrequency || '2';
+            if(document.getElementById('setting_gdriveFolderId')) document.getElementById('setting_gdriveFolderId').value = appSettings.gdriveFolderId || '';
             document.getElementById('setPrintShowTax').value = appSettings.printShowTax || 'YES';
             // Print Header
             document.getElementById('printCompanyName').textContent = appSettings.companyName || 'Sales Data Entry';
@@ -1951,6 +1956,34 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
         alert('Settings updated! Please refresh the page to apply all changes.');
     } else {
         alert('Failed to update settings');
+    }
+});
+
+document.getElementById('autoBackupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Saving...';
+    submitBtn.disabled = true;
+
+    try {
+        const res = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            alert('Auto-Backup Settings updated successfully!');
+        } else {
+            alert('Failed to update Auto-Backup Settings');
+        }
+    } catch (error) {
+        alert('An error occurred while saving.');
+    } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
     }
 });
 

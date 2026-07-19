@@ -49,27 +49,8 @@ public class SystemController {
     @PreAuthorize("@customPermissionEvaluator.hasAccess(authentication, 'Settings', 'CREATE')")
     public ResponseEntity<Resource> backupDatabase() {
         try {
-            Map<String, List<Map<String, Object>>> backupData = new HashMap<>();
-            List<String> tableNames = new java.util.ArrayList<>();
-            try (Connection conn = dataSource.getConnection()) {
-                DatabaseMetaData metaData = conn.getMetaData();
-                String driver = metaData.getDriverName().toLowerCase();
-                String schema = driver.contains("postgresql") ? "public" : null;
-                try (ResultSet rs = metaData.getTables(null, schema, "%", new String[]{"TABLE"})) {
-                    while (rs.next()) {
-                        String tableName = rs.getString("TABLE_NAME");
-                        if (tableName.startsWith("sqlite_") || tableName.startsWith("pg_")) continue;
-                        tableNames.add(tableName);
-                    }
-                }
-            }
-
-            for (String tableName : tableNames) {
-                List<Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT * FROM \"" + tableName + "\"");
-                backupData.put(tableName, rows);
-            }
-
-            byte[] jsonBytes = mapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(backupData);
+            String jsonString = generateBackupJsonString();
+            byte[] jsonBytes = jsonString.getBytes(java.nio.charset.StandardCharsets.UTF_8);
             Resource resource = new ByteArrayResource(jsonBytes);
 
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
@@ -84,6 +65,30 @@ public class SystemController {
             e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    public String generateBackupJsonString() throws Exception {
+        Map<String, List<Map<String, Object>>> backupData = new HashMap<>();
+        List<String> tableNames = new java.util.ArrayList<>();
+        try (Connection conn = dataSource.getConnection()) {
+            DatabaseMetaData metaData = conn.getMetaData();
+            String driver = metaData.getDriverName().toLowerCase();
+            String schema = driver.contains("postgresql") ? "public" : null;
+            try (ResultSet rs = metaData.getTables(null, schema, "%", new String[]{"TABLE"})) {
+                while (rs.next()) {
+                    String tableName = rs.getString("TABLE_NAME");
+                    if (tableName.startsWith("sqlite_") || tableName.startsWith("pg_")) continue;
+                    tableNames.add(tableName);
+                }
+            }
+        }
+
+        for (String tableName : tableNames) {
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT * FROM \"" + tableName + "\"");
+            backupData.put(tableName, rows);
+        }
+
+        return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(backupData);
     }
 
     @PostMapping("/restore")

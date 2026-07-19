@@ -804,6 +804,40 @@
                             </div>
                         </div>
                         
+                        <div class="col-md-12 mt-4">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">Google Drive Auto-Backup</div>
+                                <div class="card-body">
+                                    <form id="autoBackupForm">
+                                        <div class="row g-3">
+                                            <div class="col-md-3">
+                                                <label class="form-label">Auto Backup Status</label>
+                                                <select class="form-select" name="autoBackupEnabled" id="setting_autoBackupEnabled">
+                                                    <option value="false">Disabled</option>
+                                                    <option value="true">Enabled</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Backup Frequency</label>
+                                                <select class="form-select" name="autoBackupFrequency" id="setting_autoBackupFrequency">
+                                                    <option value="2">2 Times a Day (Every 12 hrs)</option>
+                                                    <option value="4">4 Times a Day (Every 6 hrs)</option>
+                                                    <option value="6">6 Times a Day (Every 4 hrs)</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-5">
+                                                <label class="form-label">Google Drive Folder ID</label>
+                                                <input type="text" class="form-control" name="gdriveFolderId" id="setting_gdriveFolderId" placeholder="e.g. 1a2B3c4D5e6F7g8H9i0J">
+                                            </div>
+                                            <div class="col-12 text-end mt-3">
+                                                <button type="submit" class="btn btn-primary"><i class="bi bi-cloud-upload"></i> Save Auto-Backup Settings</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <!-- Roles and Permissions Matrix -->
                         <div class="col-md-12 mt-4" id="rolesMatrixCard">
                             <div class="card">
