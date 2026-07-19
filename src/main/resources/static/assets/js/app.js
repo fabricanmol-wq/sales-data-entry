@@ -1263,7 +1263,13 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', async () =
             if (typeof loadDashboard === 'function') loadDashboard();
             if (typeof loadUniqueCustomersTable === 'function') loadUniqueCustomersTable();
         } else {
-            showNotification('Error deleting record', 'danger');
+            let errorMsg = 'Error deleting record';
+            try {
+                const errorData = await res.json();
+                if (errorData && errorData.message) errorMsg = errorData.message;
+            } catch (e) {}
+            showNotification(errorMsg, 'danger');
+            if (deleteModalInstance) deleteModalInstance.hide();
         }
     } catch(e) {
         showNotification('Error: ' + e.message, 'danger');

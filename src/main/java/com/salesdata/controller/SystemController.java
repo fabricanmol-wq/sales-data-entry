@@ -105,6 +105,16 @@ public class SystemController {
                 String driver = metaData.getDriverName().toLowerCase();
                 isPostgres = driver.contains("postgresql");
             }
+
+            // SQLite preserves case in table names, Postgres defaults to lowercase.
+            // If restoring from SQLite to Postgres, convert all table names to lowercase.
+            if (isPostgres) {
+                Map<String, List<Map<String, Object>>> lowerCaseBackupData = new HashMap<>();
+                for (Map.Entry<String, List<Map<String, Object>>> entry : backupData.entrySet()) {
+                    lowerCaseBackupData.put(entry.getKey().toLowerCase(), entry.getValue());
+                }
+                backupData = lowerCaseBackupData;
+            }
                 
             // Disable foreign key checks
             if (isPostgres) {
