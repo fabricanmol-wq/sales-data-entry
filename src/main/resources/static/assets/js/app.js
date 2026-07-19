@@ -1918,12 +1918,24 @@ document.getElementById('restoreForm').addEventListener('submit', async (e) => {
     const fileInput = document.getElementById('restoreFile');
     if (fileInput.files.length === 0) return alert('Select file');
     
-    const formData = new FormData();
-    formData.append('file', fileInput.files[0]);
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Restoring...';
+    submitBtn.disabled = true;
     
-    const res = await fetch('/api/system/restore', { method: 'POST', body: formData });
-    const data = await res.json();
-    alert(data.message);
+    try {
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        
+        const res = await fetch('/api/system/restore', { method: 'POST', body: formData });
+        const data = await res.json();
+        alert(data.message);
+    } catch (error) {
+        alert('An error occurred during restore.');
+    } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
 });
 
 document.getElementById('settingsForm').addEventListener('submit', async (e) => {
