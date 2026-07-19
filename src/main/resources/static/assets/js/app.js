@@ -2689,7 +2689,7 @@ document.getElementById('btnAddItem').addEventListener('click', () => {
     } else {
         currentBillItems.push({
             productId: pid,
-            itemName: prodSelect.options[prodSelect.selectedIndex].text,
+            itemName: prodSelect.options[prodSelect.selectedIndex].text.replace(/\s\[.*?\]$/, ''),
             quantity: qty,
             unitPrice: price,
             totalPrice: qty * price
