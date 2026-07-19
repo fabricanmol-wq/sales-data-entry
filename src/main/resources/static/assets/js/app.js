@@ -3025,7 +3025,7 @@ document.getElementById('btnSaveBill').addEventListener('click', async () => {
             showNotification(editingBillId ? 'Bill updated successfully!' : 'Bill created successfully!');
             bootstrap.Modal.getInstance(document.getElementById('billingModal')).hide();
             if (!editingBillId) {
-                printInvoice(savedBill, currentBillItems);
+                printInvoice(savedBill, savedBill.items || []);
             }
             loadBills();
             if (typeof loadEntries === 'function') loadEntries();
