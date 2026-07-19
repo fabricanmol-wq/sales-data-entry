@@ -1136,11 +1136,11 @@
                                         </div>
                                         <div class="col-md-2">
                                             <label class="form-label small">Price</label>
-                                            <input type="text" class="form-control form-control-sm comma-input" inputmode="numeric" id="billItemPrice">
+                                            <input type="text" class="form-control form-control-sm comma-input" inputmode="numeric" id="billItemPrice" autocomplete="off">
                                         </div>
                                         <div class="col-md-2">
                                             <label class="form-label small">Qty</label>
-                                            <input type="text" class="form-control form-control-sm comma-input" inputmode="numeric" id="billItemQty">
+                                            <input type="text" class="form-control form-control-sm comma-input" inputmode="numeric" id="billItemQty" autocomplete="off">
                                         </div>
                                         <div class="col-md-3">
                                             <button class="btn btn-sm btn-primary w-100" id="btnAddItem">Add to Bill</button>
@@ -1178,14 +1178,14 @@
                                             <label class="form-label small">Discount</label>
                                             <span class="small fw-bold text-danger" id="billDiscountTotal"></span>
                                         </div>
-                                        <input type="text" class="form-control form-control-sm comma-input" inputmode="numeric" id="billDiscount" value="0">
+                                        <input type="text" class="form-control form-control-sm comma-input" inputmode="numeric" id="billDiscount" value="0" autocomplete="off">
                                     </div>
                                     <div class="mb-3" id="expensesContainer">
                                         <div class="form-check mb-1">
                                             <input class="form-check-input" type="checkbox" id="billHasExpenses">
                                             <label class="form-check-label small" for="billHasExpenses">Expenses</label>
                                         </div>
-                                        <input type="text" class="form-control form-control-sm comma-input d-none" inputmode="numeric" id="billExpenses" value="0">
+                                        <input type="text" class="form-control form-control-sm comma-input d-none" inputmode="numeric" id="billExpenses" value="0" autocomplete="off">
                                     </div>
                                     <div class="mb-3" id="productReturnContainer" style="display: none;">
                                         <div class="form-check mb-1">
@@ -1212,7 +1212,7 @@
                                     </div>
                                     <div class="mb-3" id="paidAmountRow">
                                         <label class="form-label small" id="paidAmountLabel">Paid Amount *</label>
-                                        <input type="text" class="form-control comma-input" inputmode="numeric" id="billPaidAmount" value="0" required>
+                                        <input type="text" class="form-control comma-input" inputmode="numeric" id="billPaidAmount" value="0" required autocomplete="off">
                                     </div>
                                     <div class="d-flex justify-content-between mb-2 text-danger" id="creditPendingRow">
                                         <span>Credit Pending:</span>                          <strong id="billCreditAmount">0.00</strong>
