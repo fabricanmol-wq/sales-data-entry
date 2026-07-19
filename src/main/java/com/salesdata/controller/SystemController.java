@@ -50,6 +50,7 @@ public class SystemController {
     public ResponseEntity<Resource> backupDatabase() {
         try {
             Map<String, List<Map<String, Object>>> backupData = new HashMap<>();
+            List<String> tableNames = new java.util.ArrayList<>();
             try (Connection conn = dataSource.getConnection()) {
                 DatabaseMetaData metaData = conn.getMetaData();
                 String driver = metaData.getDriverName().toLowerCase();
@@ -58,10 +59,14 @@ public class SystemController {
                     while (rs.next()) {
                         String tableName = rs.getString("TABLE_NAME");
                         if (tableName.startsWith("sqlite_") || tableName.startsWith("pg_")) continue;
-                        List<Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT * FROM " + tableName);
-                        backupData.put(tableName, rows);
+                        tableNames.add(tableName);
                     }
                 }
+            }
+
+            for (String tableName : tableNames) {
+                List<Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT * FROM \"" + tableName + "\"");
+                backupData.put(tableName, rows);
             }
 
             byte[] jsonBytes = mapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(backupData);
@@ -94,70 +99,71 @@ public class SystemController {
                 new com.fasterxml.jackson.core.type.TypeReference<Map<String, List<Map<String, Object>>>>() {}
             );
             
+            boolean isPostgres = false;
             try (Connection conn = dataSource.getConnection()) {
                 DatabaseMetaData metaData = conn.getMetaData();
                 String driver = metaData.getDriverName().toLowerCase();
-                boolean isPostgres = driver.contains("postgresql");
+                isPostgres = driver.contains("postgresql");
+            }
                 
-                // Disable foreign key checks
+            // Disable foreign key checks
+            if (isPostgres) {
+                for (String tableName : backupData.keySet()) {
+                    jdbcTemplate.execute("ALTER TABLE \"" + tableName + "\" DISABLE TRIGGER ALL;");
+                }
+            } else {
+                jdbcTemplate.execute("PRAGMA foreign_keys = OFF;");
+            }
+                
+            try {
+                for (Map.Entry<String, List<Map<String, Object>>> entry : backupData.entrySet()) {
+                    String tableName = entry.getKey();
+                    List<Map<String, Object>> rows = entry.getValue();
+                        
+                    // Clear existing data
+                    jdbcTemplate.execute("DELETE FROM \"" + tableName + "\"");
+                        
+                    if (rows.isEmpty()) continue;
+                        
+                    // Insert rows
+                    for (Map<String, Object> row : rows) {
+                        StringBuilder sql = new StringBuilder("INSERT INTO \"").append(tableName).append("\" (");
+                        StringBuilder values = new StringBuilder(" VALUES (");
+                        Object[] params = new Object[row.size()];
+                        int i = 0;
+                        for (Map.Entry<String, Object> col : row.entrySet()) {
+                            sql.append("\"").append(col.getKey()).append("\"");
+                            values.append("?");
+                            params[i++] = col.getValue();
+                            if (i < row.size()) {
+                                sql.append(", ");
+                                values.append(", ");
+                            }
+                        }
+                        sql.append(")");
+                        values.append(")");
+                        jdbcTemplate.update(sql.toString() + values.toString(), params);
+                    }
+                }
+                    
+                // Reset sequences for PostgreSQL
                 if (isPostgres) {
                     for (String tableName : backupData.keySet()) {
-                        jdbcTemplate.execute("ALTER TABLE " + tableName + " DISABLE TRIGGER ALL;");
+                        try {
+                            jdbcTemplate.execute("SELECT setval(pg_get_serial_sequence('\"" + tableName + "\"', 'id'), COALESCE((SELECT MAX(id)+1 FROM \"" + tableName + "\"), 1), false)");
+                        } catch (Exception e) {
+                            // Ignore if no sequence or id column
+                        }
+                    }
+                }
+            } finally {
+                // Re-enable foreign key checks
+                if (isPostgres) {
+                    for (String tableName : backupData.keySet()) {
+                        jdbcTemplate.execute("ALTER TABLE \"" + tableName + "\" ENABLE TRIGGER ALL;");
                     }
                 } else {
-                    jdbcTemplate.execute("PRAGMA foreign_keys = OFF;");
-                }
-                
-                try {
-                    for (Map.Entry<String, List<Map<String, Object>>> entry : backupData.entrySet()) {
-                        String tableName = entry.getKey();
-                        List<Map<String, Object>> rows = entry.getValue();
-                        
-                        // Clear existing data
-                        jdbcTemplate.execute("DELETE FROM " + tableName);
-                        
-                        if (rows.isEmpty()) continue;
-                        
-                        // Insert rows
-                        for (Map<String, Object> row : rows) {
-                            StringBuilder sql = new StringBuilder("INSERT INTO ").append(tableName).append(" (");
-                            StringBuilder values = new StringBuilder(" VALUES (");
-                            Object[] params = new Object[row.size()];
-                            int i = 0;
-                            for (Map.Entry<String, Object> col : row.entrySet()) {
-                                sql.append(col.getKey());
-                                values.append("?");
-                                params[i++] = col.getValue();
-                                if (i < row.size()) {
-                                    sql.append(", ");
-                                    values.append(", ");
-                                }
-                            }
-                            sql.append(")");
-                            values.append(")");
-                            jdbcTemplate.update(sql.toString() + values.toString(), params);
-                        }
-                    }
-                    
-                    // Reset sequences for PostgreSQL
-                    if (isPostgres) {
-                        for (String tableName : backupData.keySet()) {
-                            try {
-                                jdbcTemplate.execute("SELECT setval(pg_get_serial_sequence('" + tableName + "', 'id'), COALESCE((SELECT MAX(id)+1 FROM " + tableName + "), 1), false)");
-                            } catch (Exception e) {
-                                // Ignore if no sequence or id column
-                            }
-                        }
-                    }
-                } finally {
-                    // Re-enable foreign key checks
-                    if (isPostgres) {
-                        for (String tableName : backupData.keySet()) {
-                            jdbcTemplate.execute("ALTER TABLE " + tableName + " ENABLE TRIGGER ALL;");
-                        }
-                    } else {
-                        jdbcTemplate.execute("PRAGMA foreign_keys = ON;");
-                    }
+                    jdbcTemplate.execute("PRAGMA foreign_keys = ON;");
                 }
             }
             
