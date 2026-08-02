@@ -282,10 +282,10 @@ async function processSendWa(data) {
     try {
         let pdfBase64;
         const opt = {
-            margin: 0.2,
+            margin: [0.3, 0.2, 0.3, 0.2],
             filename: `${(isPayment || isReturn) ? 'REC' : 'INV'}-${data.id}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
+            html2canvas: { scale: 2, windowWidth: 1000 },
             jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
         };
 
@@ -344,9 +344,18 @@ async function processSendWa(data) {
             populateInvoiceForPdf(data);
             const printArea = document.getElementById('invoicePrintArea');
             document.body.classList.add('printing-invoice');
+            
+            // Force width for PDF generation
+            const oldWidth = printArea.style.width;
+            const oldMaxWidth = printArea.style.maxWidth;
+            printArea.style.width = '800px';
+            printArea.style.maxWidth = '800px';
+            
             try {
                 pdfBase64 = await html2pdf().set(opt).from(printArea).output('datauristring');
             } finally {
+                printArea.style.width = oldWidth;
+                printArea.style.maxWidth = oldMaxWidth;
                 document.body.classList.remove('printing-invoice');
             }
         }
