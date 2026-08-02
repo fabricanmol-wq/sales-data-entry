@@ -318,10 +318,12 @@ async function processSendWa(data) {
         container.style.top = '0px';
         container.style.left = '0px';
         container.style.width = '680px';
-        container.style.zIndex = '-9999';
-        container.style.opacity = '0.01';
+        container.style.height = '0px';
+        container.style.overflow = 'visible';
+        container.style.zIndex = '-999999';
+        container.style.opacity = '0';
         container.style.pointerEvents = 'none';
-        container.style.background = '#ffffff';
+        container.style.background = 'transparent';
         container.innerHTML = htmlContent;
         document.body.appendChild(container);
 

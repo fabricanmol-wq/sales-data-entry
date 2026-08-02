@@ -3142,7 +3142,7 @@ window.generateInvoiceHtml = function(bill, itemsDetails, prefix = "INV-") {
     return `<html><head><title>Print Invoice</title>` +
            `<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">` +
            `<link href="/assets/css/style.css" rel="stylesheet">` +
-           `<style>body { background: white !important; color: black !important; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; } .row { margin-left: 0 !important; margin-right: 0 !important; } table th, table td { word-wrap: break-word; overflow-wrap: break-word; }</style>` +
+           `<style>.invoice-print-wrapper { background: white !important; color: black !important; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; } .invoice-print-wrapper .row { margin-left: 0 !important; margin-right: 0 !important; } .invoice-print-wrapper table th, .invoice-print-wrapper table td { word-wrap: break-word; overflow-wrap: break-word; }</style>` +
            `</head><body style="padding: 20px; background: white;">` +
            `<div id="waInvoicePrintArea" class="invoice-print-wrapper" style="display: block !important; width: 680px; max-width: 680px; margin: 0 auto; font-size: ${printArea.style.fontSize}; background: white; color: black; padding: 10px; box-sizing: border-box;">` +
            document.getElementById('invoicePrintArea').innerHTML +
@@ -3214,8 +3214,7 @@ window.generateReceiptHtml = async function(record) {
     <head>
         <title>Print Receipt</title>
         <style>
-            body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: white !important; color: black !important; padding: 20px; margin: 0; }
-            .receipt-container { width: 680px; max-width: 680px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; box-sizing: border-box; background: white !important; color: black !important; }
+            .receipt-container { width: 680px; max-width: 680px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; box-sizing: border-box; background: white !important; color: black !important; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }
             .receipt-container .text-center { text-align: center; }
             .receipt-container .header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
             .receipt-container .details-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: fixed; }
