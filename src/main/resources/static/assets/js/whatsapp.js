@@ -328,7 +328,7 @@ async function processSendWa(data) {
         await new Promise(resolve => setTimeout(resolve, 300));
 
         try {
-            const targetEl = container.querySelector('#' + targetId) || container.firstElementChild;
+            const targetEl = container.querySelector('#' + targetId) || container.querySelector('div') || container.firstElementChild;
             pdfBase64 = await html2pdf().set(opt).from(targetEl).output('datauristring');
         } finally {
             if (container && container.parentNode) {

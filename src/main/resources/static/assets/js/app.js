@@ -3142,9 +3142,9 @@ window.generateInvoiceHtml = function(bill, itemsDetails, prefix = "INV-") {
     return `<html><head><title>Print Invoice</title>` +
            `<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">` +
            `<link href="/assets/css/style.css" rel="stylesheet">` +
-           `<style>body { background: white !important; color: black !important; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; } .row { margin-left: 0 !important; margin-right: 0 !important; }</style>` +
+           `<style>body { background: white !important; color: black !important; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; } .row { margin-left: 0 !important; margin-right: 0 !important; } table th, table td { word-wrap: break-word; overflow-wrap: break-word; }</style>` +
            `</head><body style="padding: 20px; background: white;">` +
-           `<div style="max-width: ${printArea.style.maxWidth}; margin: 0 auto; font-size: ${printArea.style.fontSize};">` +
+           `<div id="invoicePrintArea" class="invoice-print-wrapper" style="width: 680px; max-width: 680px; margin: 0 auto; font-size: ${printArea.style.fontSize}; background: white; color: black; padding: 10px; box-sizing: border-box;">` +
            document.getElementById('invoicePrintArea').innerHTML +
            `</div></body></html>`;
 };
