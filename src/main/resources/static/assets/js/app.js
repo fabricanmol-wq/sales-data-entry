@@ -934,6 +934,7 @@ async function loadEntries() {
             <td class="fund-col text-danger">${appSettings.currencySymbol}${formatCurrency(displayCreditPending)}</td>
             <td class="d-print-none text-nowrap">
                 <button class="btn btn-sm btn-secondary view-bill" title="View Bill" data-remarks="${escapeHTML(r.remarks)}" data-id="${r.id}"><i class="bi bi-printer"></i></button>
+                <button class="btn btn-sm btn-success send-wa-btn" title="Send to WhatsApp" onclick='sendBillToWa(${r.id})'><i class="bi bi-whatsapp"></i></button>
                 ${actions}
             </td>
         </tr>`;
@@ -2375,6 +2376,7 @@ async function loadBills() {
                 <td>
                     <button class="btn btn-sm btn-primary" onclick='editBill(${JSON.stringify(b).replace(/'/g, "&apos;")})'><i class="bi bi-pencil"></i></button>
                     <button class="btn btn-sm btn-secondary" onclick='printOldInvoice(${b.id})'><i class="bi bi-printer"></i></button>
+                    <button class="btn btn-sm btn-success" title="Send to WhatsApp" onclick='sendBillToWa(${b.id})'><i class="bi bi-whatsapp"></i></button>
                     <button class="btn btn-sm btn-danger" onclick='deleteEntry(${b.id}, "bill")'><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
@@ -2973,8 +2975,13 @@ document.getElementById('btnSaveBill').addEventListener('click', async () => {
                 body: JSON.stringify(payload)
             });
             if (res.ok) {
+                const savedPayment = await res.json();
                 showNotification('Payment saved successfully!');
                 bootstrap.Modal.getInstance(document.getElementById('billingModal')).hide();
+                if (window.sendWaAfterSave) {
+                    sendBillToWa(savedPayment.id);
+                    window.sendWaAfterSave = false;
+                }
                 if (typeof loadUniqueCustomersTable === 'function') loadUniqueCustomersTable();
                 if (typeof loadUniqueCustomers === 'function') loadUniqueCustomers();
                 if (typeof loadBills === 'function') loadBills();
@@ -3024,6 +3031,12 @@ document.getElementById('btnSaveBill').addEventListener('click', async () => {
             const savedBill = await res.json();
             showNotification(editingBillId ? 'Bill updated successfully!' : 'Bill created successfully!');
             bootstrap.Modal.getInstance(document.getElementById('billingModal')).hide();
+            
+            if (window.sendWaAfterSave) {
+                sendBillToWa(savedBill.id);
+                window.sendWaAfterSave = false;
+            }
+            
             if (!editingBillId) {
                 printInvoice(savedBill, savedBill.items || []);
             }
