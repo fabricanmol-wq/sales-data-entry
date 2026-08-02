@@ -304,47 +304,8 @@ async function processSendWa(data) {
         };
 
         if (isPayment || isReturn) {
-            // Generate Receipt HTML exactly as in app.js printReceipt
-            let calculationString = isCashReturn 
-                ? `${amountLabel}: ${formatCurrency(txnAmount)}`
-                : `Balance: ${formatCurrency(previousCredit)} DR &nbsp;&nbsp;&nbsp; ${amountLabel}: ${formatCurrency(txnAmount)} &nbsp;&nbsp;&nbsp; Closing Balance: ${formatCurrency(currentCredit)} DR`;
-
-            let city = "-";
-            if (data.customer && data.customer.city) city = data.customer.city;
-            else if (data.city) city = data.city;
-
-            let htmlContent = `
-            <div id="tempWaReceiptPrintArea" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: white; color: black; padding: 20px; width: 680px; max-width: 680px; margin: 0 auto; box-sizing: border-box;">
-                <div style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; text-align: center;">
-                    <h2>${appSettings.companyName || 'My Company'}</h2>
-                    <h3>${typeLabel.toUpperCase()}</h3>
-                    <p><strong>Receipt No:</strong> ${(isReturn ? 'RET-' : 'REC-') + data.id} &nbsp;&nbsp; <strong>Date:</strong> ${new Date(data.entryDate || data.billDate || new Date().toISOString().split('T')[0]).toLocaleDateString()}</p>
-                </div>
-                
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: fixed;">
-                    <tr>
-                        <th style="padding: 8px; border: 1px solid #000; text-align: left; background-color: #f0f0f0; word-wrap: break-word; overflow-wrap: break-word;">CUSTOMER NAME</th>
-                        <th style="padding: 8px; border: 1px solid #000; text-align: left; background-color: #f0f0f0; word-wrap: break-word; overflow-wrap: break-word;">CONTACT NUMBER</th>
-                        <th style="padding: 8px; border: 1px solid #000; text-align: left; background-color: #f0f0f0; word-wrap: break-word; overflow-wrap: break-word;">CITY</th>
-                        <th style="padding: 8px; border: 1px solid #000; text-align: left; background-color: #f0f0f0; word-wrap: break-word; overflow-wrap: break-word;">REMARKS</th>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px; border: 1px solid #000; text-align: left; word-wrap: break-word; overflow-wrap: break-word;">${data.customerName}</td>
-                        <td style="padding: 8px; border: 1px solid #000; text-align: left; word-wrap: break-word; overflow-wrap: break-word;">${data.contactNumber || '-'}</td>
-                        <td style="padding: 8px; border: 1px solid #000; text-align: left; word-wrap: break-word; overflow-wrap: break-word;">${city}</td>
-                        <td style="padding: 8px; border: 1px solid #000; text-align: left; word-wrap: break-word; overflow-wrap: break-word;">${data.remarks || '-'}</td>
-                    </tr>
-                </table>
-                
-                <div style="font-weight: bold; font-size: 14px; margin-top: 15px; text-align: right; border: 1px solid #000; padding: 10px; background-color: #f9f9f9;">
-                    ${calculationString}
-                </div>
-                
-                <div style="margin-top: 60px; display: flex; justify-content: space-between;">
-                    <div><br>_________________________<br>Customer Signature</div>
-                    <div style="text-align: right;"><br>_________________________<br>Authorized Signatory</div>
-                </div>
-            </div>`;
+            // Generate Receipt HTML exactly from the original View Bill generator in app.js
+            const htmlContent = await window.generateReceiptHtml(data);
             
             let tempFrame = document.createElement('iframe');
             tempFrame.style.position = 'absolute';
@@ -356,17 +317,18 @@ async function processSendWa(data) {
 
             const doc = tempFrame.contentWindow.document;
             doc.open();
-            doc.write('<html><head><title>Receipt</title></head><body style="margin:0; padding:0; background:white;">' + htmlContent + '</body></html>');
+            doc.write(htmlContent);
             doc.close();
 
             try {
-                const targetEl = doc.getElementById('tempWaReceiptPrintArea');
+                const targetEl = doc.getElementById('receiptPrintArea');
                 pdfBase64 = await html2pdf().set(opt).from(targetEl).output('datauristring');
             } finally {
                 document.body.removeChild(tempFrame);
             }
         } else {
-            populateInvoiceForPdf(data);
+            // Populate using the exact original View Bill function from app.js
+            printInvoice(data, data.items || [], "INV-");
             const printArea = document.getElementById('invoicePrintArea');
             
             let tempFrame = document.createElement('iframe');
@@ -420,84 +382,4 @@ async function processSendWa(data) {
         console.error(e);
         showNotification("Failed to send WhatsApp message with PDF", "danger");
     }
-}
-
-function populateInvoiceForPdf(bill) {
-    const itemsDetails = bill.items || [];
-    const prefix = "INV-";
-    
-    document.getElementById('invBusinessName').innerText = appSettings.companyName || "My Company";
-    document.getElementById('invCustomerName').innerText = bill.customerName;
-    document.getElementById('invCustomerContact').innerText = bill.contactNumber;
-    document.getElementById('invCustomerCity').innerText = bill.city || '';
-    
-    document.getElementById('invDate').innerText = new Date(bill.billDate || bill.entryDate).toLocaleDateString();
-    document.getElementById('invNumber').innerText = prefix + bill.id;
-    
-    document.getElementById('invTerms').innerText = appSettings.printTermsConditions || '';
-    document.getElementById('invBankDetails').innerText = appSettings.printBankDetails || '';
-    document.getElementById('invSignatory').innerText = appSettings.printSignatory || 'Authorized Signatory';
-    
-    const printArea = document.getElementById('invoicePrintArea');
-    printArea.style.maxWidth = '680px';
-    printArea.style.fontSize = '0.95rem';
-    
-    let salesmanName = '-';
-    if (bill.salesman) salesmanName = bill.salesman.name;
-    
-    document.getElementById('invSalesman').innerText = salesmanName;
-
-    const tbody = document.getElementById('invItemsTable');
-    tbody.innerHTML = '';
-    
-    if (itemsDetails.length === 0) {
-        // If it's a generic payment receipt
-        let desc = "Payment Receipt";
-        if (bill.billType === 'CASH_RETURN' || bill.billType === 'PRODUCT_RETURN') desc = "Refund";
-        
-        tbody.innerHTML += `<tr>
-            <td class="text-start">1</td>
-            <td class="text-start fw-medium">${desc}</td>
-            <td class="text-center">-</td>
-            <td class="text-end">-</td>
-            <td class="text-end fw-bold">${appSettings.currencySymbol}${formatCurrency(bill.netAmount || bill.paymentAmount || 0)}</td>
-        </tr>`;
-    } else {
-        itemsDetails.forEach((item, index) => {
-            let name = item.itemName || (item.product ? item.product.itemName : 'Product');
-            tbody.innerHTML += `<tr>
-                <td class="text-start">${index + 1}</td>
-                <td class="text-start fw-medium">${name}</td>
-                <td class="text-center">${item.quantity}</td>
-                <td class="text-end">${appSettings.currencySymbol}${formatCurrency(item.unitPrice)}</td>
-                <td class="text-end fw-bold">${appSettings.currencySymbol}${formatCurrency(item.totalPrice)}</td>
-            </tr>`;
-        });
-    }
-
-    const netAmt = bill.netAmount || bill.billAmount || 0;
-    document.getElementById('invSubtotal').innerText = appSettings.currencySymbol + formatCurrency(netAmt);
-    
-    let totalDiscount = 0;
-    if (bill.discount) {
-        let totalQty = 1;
-        if (itemsDetails.length > 0) {
-            totalQty = 0;
-            itemsDetails.forEach(item => totalQty += item.quantity);
-        }
-        totalDiscount = bill.discount * totalQty;
-    }
-    
-    document.getElementById('invDiscount').innerText = appSettings.currencySymbol + formatCurrency(totalDiscount);
-    
-    if (bill.expenses && bill.expenses > 0) {
-        document.getElementById('invExpensesRow').classList.remove('d-none');
-        document.getElementById('invExpenses').innerText = appSettings.currencySymbol + formatCurrency(bill.expenses);
-    } else {
-        document.getElementById('invExpensesRow').classList.add('d-none');
-    }
-    
-    document.getElementById('invNetTotal').innerText = appSettings.currencySymbol + formatCurrency(netAmt);
-    document.getElementById('invPaid').innerText = appSettings.currencySymbol + formatCurrency(bill.paidAmount || bill.paymentAmount || 0);
-    document.getElementById('invCredit').innerText = appSettings.currencySymbol + formatCurrency(bill.creditAmount || 0);
 }

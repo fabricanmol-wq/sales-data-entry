@@ -3094,8 +3094,8 @@ function printInvoice(bill, itemsDetails, prefix = "INV-") {
         printArea.style.maxWidth = '148mm';
         printArea.style.fontSize = '0.9rem';
     } else {
-        printArea.style.maxWidth = '800px';
-        printArea.style.fontSize = '1rem';
+        printArea.style.maxWidth = '680px';
+        printArea.style.fontSize = '0.95rem';
     }
     
     // Find salesman name if object exists
@@ -3164,7 +3164,7 @@ function printInvoice(bill, itemsDetails, prefix = "INV-") {
     }, 500);
 }
 
-async function printReceipt(record) {
+window.generateReceiptHtml = async function(record) {
     let isPayment = (record.billType === 'PAYMENT_RECEIVED' || (record.netAmount === 0 && record.creditAmount < 0));
     let isReturn = (record.billType === 'PRODUCT_RETURN' || record.billType === 'CASH_RETURN' || record.netAmount < 0);
     let isDebit = (!isPayment && !isReturn && record.netAmount > 0);
@@ -3204,27 +3204,27 @@ async function printReceipt(record) {
         ? `${amountLabel}: ${formatCurrency(txnAmount)}`
         : `Balance: ${formatCurrency(previousCredit)} DR &nbsp;&nbsp;&nbsp; ${amountLabel}: ${formatCurrency(txnAmount)} &nbsp;&nbsp;&nbsp; Closing Balance: ${formatCurrency(currentCredit)} DR`;
 
-    let htmlContent = `
+    return `
     <html>
     <head>
         <title>Print Receipt</title>
         <style>
             body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: white; color: black; padding: 20px; margin: 0; }
-            .receipt-container { max-width: 800px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; }
+            .receipt-container { width: 680px; max-width: 680px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; box-sizing: border-box; }
             .text-center { text-align: center; }
             .header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-            .details-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            .details-table th, .details-table td { padding: 10px; border: 1px solid #000; text-align: left; }
+            .details-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: fixed; }
+            .details-table th, .details-table td { padding: 10px; border: 1px solid #000; text-align: left; word-wrap: break-word; overflow-wrap: break-word; }
             .details-table th { background-color: #f0f0f0; }
             .calc-line { font-weight: bold; font-size: 14px; margin-top: 15px; text-align: right; border: 1px solid #000; padding: 10px; background-color: #f9f9f9; }
         </style>
     </head>
     <body>
-        <div class="receipt-container">
+        <div class="receipt-container" id="receiptPrintArea">
             <div class="header text-center">
                 <h2>${appSettings.companyName || 'My Company'}</h2>
                 <h3>${typeLabel}</h3>
-                <p><strong>Receipt No:</strong> ${(isReturn ? 'RET-' : 'REC-') + record.id} &nbsp;&nbsp; <strong>Date:</strong> ${new Date(record.entryDate).toLocaleDateString()}</p>
+                <p><strong>Receipt No:</strong> ${(isReturn ? 'RET-' : 'REC-') + record.id} &nbsp;&nbsp; <strong>Date:</strong> ${new Date(record.entryDate || record.billDate || new Date().toISOString().split('T')[0]).toLocaleDateString()}</p>
             </div>
             
             <table class="details-table">
@@ -3254,7 +3254,10 @@ async function printReceipt(record) {
     </body>
     </html>
     `;
-    
+};
+
+async function printReceipt(record) {
+    const htmlContent = await window.generateReceiptHtml(record);
     let printFrame = document.getElementById('globalPrintFrame');
     if (!printFrame) {
         printFrame = document.createElement('iframe');
