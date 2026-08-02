@@ -55,21 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Handle dynamically added "Send to WhatsApp" buttons in tables
-    document.addEventListener('click', (e) => {
-        if (e.target.closest('.send-wa-btn')) {
-            e.preventDefault();
-            const btn = e.target.closest('.send-wa-btn');
-            const onclickText = btn.getAttribute('onclick');
-            const match = onclickText ? onclickText.match(/\d+/) : null;
-            if (match) {
-                const id = match[0];
-                let type = 'sales';
-                if (onclickText.includes('billing')) type = 'billing';
-                sendBillToWa(id, type);
-            }
-        }
-    });
+    // Listener removed because buttons have explicit onclick="sendBillToWa(...)"
 });
 
 async function checkWaStatus() {

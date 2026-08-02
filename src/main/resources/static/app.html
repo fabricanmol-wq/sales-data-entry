@@ -13,11 +13,10 @@
     <!-- Custom CSS -->
     <style>
         #invoicePrintArea { display: none !important; }
-        body.printing-invoice #invoicePrintArea { display: block !important; position: absolute; top: -9999px; left: -9999px; }
+        body.printing-invoice #invoicePrintArea { display: block !important; }
         
         @media print {
             body.printing-invoice #wrapper { display: none !important; }
-            body.printing-invoice #invoicePrintArea { position: static; top: auto; left: auto; }
         }
         @page {
             @bottom-right {
