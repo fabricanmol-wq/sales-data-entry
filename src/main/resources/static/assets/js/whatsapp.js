@@ -215,7 +215,13 @@ window.sendBillToWa = async function(id, type = 'sales') {
             return;
         }
 
-        await processSendWa(data);
+        showNotification(`🚀 Sending WhatsApp PDF to ${customerName}...`, "info");
+        
+        // Process sending asynchronously in background so confirmation modal closes immediately
+        processSendWa(data).catch(err => {
+            console.error("WA Send Error:", err);
+            showNotification(`Failed to send WA: ${err.message || 'Unknown error'}`, "danger");
+        });
 
     } catch (e) {
         console.error("WA Send Error:", e);
@@ -229,44 +235,26 @@ async function processSendWa(data) {
         return;
     }
 
-    let phone = data.contactNumber;
-    // ensure +91 or country code if needed. Assuming India +91 if length is 10
+    let phone = data.contactNumber.replace(/[^0-9]/g, '');
     if (phone.length === 10) {
         phone = "91" + phone;
     }
 
-    let isPayment = (data.billType === 'PAYMENT_RECEIVED' || (data.netAmount === 0 && data.creditAmount < 0));
-    let isReturn = (data.billType === 'PRODUCT_RETURN' || data.billType === 'CASH_RETURN' || data.netAmount < 0);
-    let isCashReturn = (data.billType === 'CASH_RETURN');
-    let isCustomerCredit = isPayment || (isReturn && !isCashReturn);
-    let amountLabel = isCustomerCredit ? "Credit" : (isCashReturn ? "Refund" : "Debit");
-    
-    let typeLabel = "Invoice";
-    if (isPayment) typeLabel = "Payment Receipt";
-    else if (isCashReturn) typeLabel = "Cash Refund";
-    else if (isReturn) typeLabel = "Product Return";
-    else if (data.billType === 'CASH_BILL' || data.billType === 'CASH') typeLabel = 'Cash Bill';
-    else if (data.billType === 'CREDIT_BILL' || data.billType === 'CREDIT') typeLabel = 'Credit Bill';
+    let msg = `Hello *${data.customerName || 'Customer'}*,\n\n`;
+    msg += `Please find attached your details from *${appSettings.companyName || 'Anmol Fabrics'}*:\n\n`;
 
-    let currentCredit = 0;
-    if (isPayment || isReturn) {
-        try {
-            const queryParams = new URLSearchParams({ customerName: data.customerName, contact: data.contactNumber || '' });
-            if (data.id) queryParams.append('upToId', data.id);
-            const crRes = await fetch(`/api/sales/customer/credit?${queryParams.toString()}`);
-            if(crRes.ok) {
-                currentCredit = parseFloat(await crRes.text()) || 0;
-            }
-        } catch(e) {}
-    }
+    const isPayment = (data.billType === 'PAYMENT_RECEIVED' || (data.netAmount === 0 && data.creditAmount < 0));
+    const isReturn = (data.billType === 'PRODUCT_RETURN' || data.billType === 'CASH_RETURN');
+    const isCashReturn = (data.billType === 'CASH_RETURN');
 
-    let netAmt = data.netAmount || data.billAmount || 0;
-    let txnAmount = isPayment ? Math.abs(data.creditAmount) : Math.abs(netAmt);
-    let previousCredit = isCustomerCredit ? (currentCredit + txnAmount) : (isCashReturn ? currentCredit : (currentCredit - txnAmount));
+    // Safe fallback calculations for Ledger items where netAmount/creditAmount may be undefined
+    const totalAmt = data.totalAmount || data.amount || 0;
+    const netAmt = data.netAmount !== undefined ? data.netAmount : (data.billAmount || totalAmt);
+    const txnAmount = data.amount || data.paidAmount || 0;
+    const previousCredit = data.previousCredit || 0;
+    const currentCredit = data.currentCredit || 0;
+    const amountLabel = isCashReturn ? 'Refunded Cash' : 'Paid Amount';
 
-    let msg = `Hello ${data.customerName},\n\n`;
-    msg += `Thank you for your business. Here is your ${typeLabel} summary:\n\n`;
-    
     if (isPayment || isReturn) {
         msg += `🧾 *Receipt No:* ${(isReturn ? 'RET-' : 'REC-')}${data.id}\n`;
         msg += `📅 *Date:* ${data.entryDate || data.billDate || new Date().toISOString().split('T')[0]}\n`;
@@ -298,8 +286,8 @@ async function processSendWa(data) {
         const opt = {
             margin: 10,
             filename: `${(isPayment || isReturn) ? 'REC' : 'INV'}-${data.id}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: { scale: 1.5, useCORS: true, logging: false },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
@@ -327,7 +315,7 @@ async function processSendWa(data) {
         container.innerHTML = htmlContent;
         document.body.appendChild(container);
 
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 10));
 
         try {
             const targetEl = container.querySelector('#' + targetId) || container.querySelector('div') || container.firstElementChild;
