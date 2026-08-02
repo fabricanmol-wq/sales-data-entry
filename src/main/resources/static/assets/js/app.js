@@ -934,7 +934,7 @@ async function loadEntries() {
             <td class="fund-col text-danger">${appSettings.currencySymbol}${formatCurrency(displayCreditPending)}</td>
             <td class="d-print-none text-nowrap">
                 <button class="btn btn-sm btn-secondary view-bill" title="View Bill" data-remarks="${escapeHTML(r.remarks)}" data-id="${r.id}"><i class="bi bi-printer"></i></button>
-                <button class="btn btn-sm btn-success send-wa-btn" title="Send to WhatsApp" onclick='sendBillToWa(${r.id})'><i class="bi bi-whatsapp"></i></button>
+                <button class="btn btn-sm btn-success send-wa-btn" title="Send to WhatsApp" onclick='sendBillToWa(${r.id}, "sales")'><i class="bi bi-whatsapp"></i></button>
                 ${actions}
             </td>
         </tr>`;
@@ -2376,7 +2376,7 @@ async function loadBills() {
                 <td>
                     <button class="btn btn-sm btn-primary" onclick='editBill(${JSON.stringify(b).replace(/'/g, "&apos;")})'><i class="bi bi-pencil"></i></button>
                     <button class="btn btn-sm btn-secondary" onclick='printOldInvoice(${b.id})'><i class="bi bi-printer"></i></button>
-                    <button class="btn btn-sm btn-success" title="Send to WhatsApp" onclick='sendBillToWa(${b.id})'><i class="bi bi-whatsapp"></i></button>
+                    <button class="btn btn-sm btn-success" title="Send to WhatsApp" onclick='sendBillToWa(${b.id}, "billing")'><i class="bi bi-whatsapp"></i></button>
                     <button class="btn btn-sm btn-danger" onclick='deleteEntry(${b.id}, "bill")'><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
@@ -2979,7 +2979,7 @@ document.getElementById('btnSaveBill').addEventListener('click', async () => {
                 showNotification('Payment saved successfully!');
                 bootstrap.Modal.getInstance(document.getElementById('billingModal')).hide();
                 if (window.sendWaAfterSave) {
-                    sendBillToWa(savedPayment.id);
+                    sendBillToWa(savedPayment.id, 'sales');
                     window.sendWaAfterSave = false;
                 }
                 if (typeof loadUniqueCustomersTable === 'function') loadUniqueCustomersTable();
@@ -3033,7 +3033,7 @@ document.getElementById('btnSaveBill').addEventListener('click', async () => {
             bootstrap.Modal.getInstance(document.getElementById('billingModal')).hide();
             
             if (window.sendWaAfterSave) {
-                sendBillToWa(savedBill.id);
+                sendBillToWa(savedBill.id, 'billing');
                 window.sendWaAfterSave = false;
             }
             

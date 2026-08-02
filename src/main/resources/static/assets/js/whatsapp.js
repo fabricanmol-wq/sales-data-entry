@@ -60,9 +60,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.closest('.send-wa-btn')) {
             e.preventDefault();
             const btn = e.target.closest('.send-wa-btn');
-            const id = btn.getAttribute('onclick').match(/\d+/)[0];
-            if (id) {
-                sendBillToWa(id);
+            const onclickText = btn.getAttribute('onclick');
+            const match = onclickText ? onclickText.match(/\d+/) : null;
+            if (match) {
+                const id = match[0];
+                let type = 'sales';
+                if (onclickText.includes('billing')) type = 'billing';
+                sendBillToWa(id, type);
             }
         }
     });
@@ -183,22 +187,34 @@ async function disconnectWa() {
     }
 }
 
-window.sendBillToWa = async function(id) {
+window.sendBillToWa = async function(id, type = 'sales') {
     try {
         // Show loading notification
         showNotification("Preparing WhatsApp message...", "info");
 
-        // Fetch Bill/Sales Record details
-        const res = await fetch(`/api/sales/${id}`);
+        let res;
+        if (type === 'billing') {
+            res = await fetch(`/api/billing/${id}`);
+        } else {
+            res = await fetch(`/api/sales/${id}`);
+        }
+
         if (!res.ok) {
-            // Fallback for Bill ID if not in sales endpoint
-            const res2 = await fetch(`/api/billing/${id}`);
-            if (!res2.ok) throw new Error("Could not fetch bill details");
-            const billData = await res2.json();
-            await processSendWa(billData);
+            throw new Error(`Could not fetch ${type} record details`);
+        }
+        
+        const data = await res.json();
+        
+        // System verification prompt as requested by user
+        const customerName = data.customerName || data.tempCustomerName || 'Unknown Customer';
+        const customerContact = data.contactNumber || 'Unknown Number';
+        const isConfirmed = confirm(`SYSTEM VERIFICATION:\n\nPlease confirm if you want to send the Bill PDF to this customer on WhatsApp:\n\nName: ${customerName}\nContact: ${customerContact}\n\nClick OK to send, or Cancel to abort.`);
+        
+        if (!isConfirmed) {
+            showNotification("WhatsApp sending cancelled by user.", "warning");
             return;
         }
-        const data = await res.json();
+
         await processSendWa(data);
 
     } catch (e) {
