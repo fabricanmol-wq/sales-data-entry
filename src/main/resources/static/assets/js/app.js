@@ -2019,6 +2019,7 @@ document.getElementById('autoBackupForm').addEventListener('submit', async (e) =
 });
 
 let backupCountdownInterval = null;
+let waBackupCountdownInterval = null;
 
 async function fetchNextBackupTime() {
     try {
