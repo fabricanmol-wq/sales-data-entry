@@ -290,7 +290,7 @@ async function processSendWa(data) {
         };
 
         if (isPayment || isReturn) {
-            // Generate Receipt HTML
+            // Generate Receipt HTML exactly as in app.js printReceipt
             let calculationString = isCashReturn 
                 ? `${amountLabel}: ${formatCurrency(txnAmount)}`
                 : `Balance: ${formatCurrency(previousCredit)} DR &nbsp;&nbsp;&nbsp; ${amountLabel}: ${formatCurrency(txnAmount)} &nbsp;&nbsp;&nbsp; Closing Balance: ${formatCurrency(currentCredit)} DR`;
@@ -300,7 +300,7 @@ async function processSendWa(data) {
             else if (data.city) city = data.city;
 
             let htmlContent = `
-            <div id="tempWaReceiptPrintArea" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: white; color: black; padding: 20px; width: 800px; margin: 0 auto;">
+            <div id="tempWaReceiptPrintArea" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: white; color: black; padding: 20px; width: 800px; margin: 0 auto; box-sizing: border-box;">
                 <div style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; text-align: center;">
                     <h2>${appSettings.companyName || 'My Company'}</h2>
                     <h3>${typeLabel.toUpperCase()}</h3>
@@ -332,36 +332,56 @@ async function processSendWa(data) {
                 </div>
             </div>`;
             
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = htmlContent;
-            document.body.appendChild(tempDiv);
-            
-            const wrapper = document.getElementById('wrapper');
-            const oldDisplay = wrapper ? wrapper.style.display : '';
-            if (wrapper) wrapper.style.display = 'none';
-            window.scrollTo(0, 0);
+            let tempFrame = document.createElement('iframe');
+            tempFrame.style.position = 'absolute';
+            tempFrame.style.top = '-9999px';
+            tempFrame.style.left = '-9999px';
+            tempFrame.style.width = '840px';
+            tempFrame.style.height = '1200px';
+            document.body.appendChild(tempFrame);
+
+            const doc = tempFrame.contentWindow.document;
+            doc.open();
+            doc.write('<html><head><title>Receipt</title></head><body style="margin:0; padding:0; background:white;">' + htmlContent + '</body></html>');
+            doc.close();
 
             try {
-                pdfBase64 = await html2pdf().set(opt).from(tempDiv.firstElementChild).output('datauristring');
+                const targetEl = doc.getElementById('tempWaReceiptPrintArea');
+                pdfBase64 = await html2pdf().set(opt).from(targetEl).output('datauristring');
             } finally {
-                if (wrapper) wrapper.style.display = oldDisplay;
-                document.body.removeChild(tempDiv);
+                document.body.removeChild(tempFrame);
             }
         } else {
             populateInvoiceForPdf(data);
             const printArea = document.getElementById('invoicePrintArea');
-            document.body.classList.add('printing-invoice');
             
-            const wrapper = document.getElementById('wrapper');
-            const oldDisplay = wrapper ? wrapper.style.display : '';
-            if (wrapper) wrapper.style.display = 'none';
-            window.scrollTo(0, 0);
+            let tempFrame = document.createElement('iframe');
+            tempFrame.style.position = 'absolute';
+            tempFrame.style.top = '-9999px';
+            tempFrame.style.left = '-9999px';
+            tempFrame.style.width = '840px';
+            tempFrame.style.height = '1200px';
+            document.body.appendChild(tempFrame);
+
+            const doc = tempFrame.contentWindow.document;
+            doc.open();
+            doc.write('<html><head><title>Invoice</title>');
+            doc.write('<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">');
+            doc.write('<link href="/assets/css/style.css" rel="stylesheet">');
+            doc.write('<style>body { background: white !important; color: black !important; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }</style>');
+            doc.write('</head><body style="padding: 20px; margin: 0; background: white;">');
+            doc.write('<div id="pdfInvoiceContainer" style="max-width: 800px; margin: 0 auto;">');
+            doc.write(printArea.innerHTML);
+            doc.write('</div></body></html>');
+            doc.close();
+
+            await new Promise(resolve => setTimeout(resolve, 300));
 
             try {
-                pdfBase64 = await html2pdf().set(opt).from(printArea).output('datauristring');
+                const targetEl = doc.getElementById('pdfInvoiceContainer');
+                pdfBase64 = await html2pdf().set(opt).from(targetEl).output('datauristring');
             } finally {
-                if (wrapper) wrapper.style.display = oldDisplay;
-                document.body.classList.remove('printing-invoice');
+                document.body.removeChild(tempFrame);
             }
         }
 
