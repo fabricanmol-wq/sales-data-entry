@@ -247,17 +247,35 @@ async function processSendWa(data) {
     const isReturn = (data.billType === 'PRODUCT_RETURN' || data.billType === 'CASH_RETURN');
     const isCashReturn = (data.billType === 'CASH_RETURN');
 
-    // Safe fallback calculations for Ledger items where netAmount/creditAmount may be undefined
+    // Calculate amounts properly based on bill type
     const totalAmt = data.totalAmount || data.amount || 0;
     const netAmt = data.netAmount !== undefined ? data.netAmount : (data.billAmount || totalAmt);
-    const txnAmount = data.amount || data.paidAmount || 0;
-    const previousCredit = data.previousCredit || 0;
-    const currentCredit = data.currentCredit || 0;
+    let txnAmount = data.paidAmount !== undefined ? data.paidAmount : (data.amount || 0);
+
+    if (isPayment || isReturn) {
+        txnAmount = isPayment ? Math.abs(data.creditAmount || 0) : Math.abs(data.netAmount || 0);
+    }
+
     const amountLabel = isCashReturn ? 'Refunded Cash' : 'Paid Amount';
+
+    let currentCredit = 0;
+    if (isPayment || isReturn) {
+        try {
+            const queryParams = new URLSearchParams({ customerName: data.customerName || data.tempCustomerName, contact: data.contactNumber || '' });
+            if (data.id) queryParams.append('upToId', data.id);
+            const cRes = await fetch(`/api/sales/customer/credit?${queryParams.toString()}`);
+            if(cRes.ok) currentCredit = parseFloat(await cRes.text()) || 0;
+        } catch(e) {}
+    }
+
+    let isCustomerCredit = isPayment || (isReturn && !isCashReturn);
+    let previousCredit = isCustomerCredit ? (currentCredit + txnAmount) : (isCashReturn ? currentCredit : (currentCredit - txnAmount));
+
+    let formattedDate = (data.entryDate || data.billDate || new Date().toISOString()).split('T')[0];
 
     if (isPayment || isReturn) {
         msg += `🧾 *Receipt No:* ${(isReturn ? 'RET-' : 'REC-')}${data.id}\n`;
-        msg += `📅 *Date:* ${data.entryDate || data.billDate || new Date().toISOString().split('T')[0]}\n`;
+        msg += `📅 *Date:* ${formattedDate}\n`;
         
         if (isCashReturn) {
             msg += `✅ *${amountLabel}:* ${appSettings.currencySymbol}${formatCurrency(txnAmount)}\n`;
@@ -269,7 +287,7 @@ async function processSendWa(data) {
     } else {
         const displayPaid = data.billType === 'PAYMENT_RECEIVED' ? txnAmount : (netAmt - (data.creditAmount || 0));
         msg += `🧾 *Bill No:* INV-${data.id}\n`;
-        msg += `📅 *Date:* ${data.entryDate || data.billDate || new Date().toISOString().split('T')[0]}\n`;
+        msg += `📅 *Date:* ${formattedDate}\n`;
         msg += `💰 *Bill Amount:* ${appSettings.currencySymbol}${formatCurrency(netAmt)}\n`;
         if (displayPaid > 0) {
             msg += `✅ *Paid Amount:* ${appSettings.currencySymbol}${formatCurrency(displayPaid)}\n`;
