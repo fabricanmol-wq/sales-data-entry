@@ -221,51 +221,134 @@ async function processSendWa(data) {
         phone = "91" + phone;
     }
 
-    let billTypeStr = "Invoice";
-    if (data.billType === 'CASH_BILL' || data.billType === 'CASH') billTypeStr = 'Cash Bill';
-    else if (data.billType === 'CREDIT_BILL' || data.billType === 'CREDIT') billTypeStr = 'Credit Bill';
-    else if (data.billType === 'PAYMENT_RECEIVED' || data.billType === 'DEBIT') billTypeStr = 'Payment Receipt';
+    let isPayment = (data.billType === 'PAYMENT_RECEIVED' || (data.netAmount === 0 && data.creditAmount < 0));
+    let isReturn = (data.billType === 'PRODUCT_RETURN' || data.billType === 'CASH_RETURN' || data.netAmount < 0);
+    let isCashReturn = (data.billType === 'CASH_RETURN');
+    let isCustomerCredit = isPayment || (isReturn && !isCashReturn);
+    let amountLabel = isCustomerCredit ? "Credit" : (isCashReturn ? "Refund" : "Debit");
+    
+    let typeLabel = "Invoice";
+    if (isPayment) typeLabel = "Payment Receipt";
+    else if (isCashReturn) typeLabel = "Cash Refund";
+    else if (isReturn) typeLabel = "Product Return";
+    else if (data.billType === 'CASH_BILL' || data.billType === 'CASH') typeLabel = 'Cash Bill';
+    else if (data.billType === 'CREDIT_BILL' || data.billType === 'CREDIT') typeLabel = 'Credit Bill';
 
-    const netAmt = data.netAmount || data.billAmount || 0;
-    const paidAmt = data.paymentAmount || 0; // for payments
-    const displayPaid = data.billType === 'PAYMENT_RECEIVED' ? paidAmt : (netAmt - (data.creditAmount || 0));
+    let currentCredit = 0;
+    if (isPayment || isReturn) {
+        try {
+            const queryParams = new URLSearchParams({ customerName: data.customerName, contact: data.contactNumber || '' });
+            if (data.id) queryParams.append('upToId', data.id);
+            const crRes = await fetch(`/api/sales/customer/credit?${queryParams.toString()}`);
+            if(crRes.ok) {
+                currentCredit = parseFloat(await crRes.text()) || 0;
+            }
+        } catch(e) {}
+    }
+
+    let netAmt = data.netAmount || data.billAmount || 0;
+    let txnAmount = isPayment ? Math.abs(data.creditAmount) : Math.abs(netAmt);
+    let previousCredit = isCustomerCredit ? (currentCredit + txnAmount) : (isCashReturn ? currentCredit : (currentCredit - txnAmount));
 
     let msg = `Hello ${data.customerName},\n\n`;
-    msg += `Thank you for your business. Here is your ${billTypeStr} summary:\n\n`;
-    msg += `🧾 *Bill No:* INV-${data.id}\n`;
-    msg += `📅 *Date:* ${data.entryDate || data.billDate || new Date().toISOString().split('T')[0]}\n`;
-    msg += `💰 *Bill Amount:* ${appSettings.currencySymbol}${formatCurrency(netAmt)}\n`;
+    msg += `Thank you for your business. Here is your ${typeLabel} summary:\n\n`;
     
-    if (displayPaid > 0) {
-        msg += `✅ *Paid Amount:* ${appSettings.currencySymbol}${formatCurrency(displayPaid)}\n`;
-    }
-    
-    if (data.creditAmount > 0) {
-        msg += `⚠️ *Credit Pending:* ${appSettings.currencySymbol}${formatCurrency(data.creditAmount)}\n`;
+    if (isPayment || isReturn) {
+        msg += `?? *Receipt No:* ${(isReturn ? 'RET-' : 'REC-')}${data.id}\n`;
+        msg += `?? *Date:* ${data.entryDate || data.billDate || new Date().toISOString().split('T')[0]}\n`;
+        
+        if (isCashReturn) {
+            msg += `? *${amountLabel}:* ${appSettings.currencySymbol}${formatCurrency(txnAmount)}\n`;
+        } else {
+            msg += `?? *Balance:* ${formatCurrency(previousCredit)} DR\n`;
+            msg += `? *${amountLabel}:* ${formatCurrency(txnAmount)}\n`;
+            msg += `?? *Closing Balance:* ${formatCurrency(currentCredit)} DR\n`;
+        }
+    } else {
+        const displayPaid = data.billType === 'PAYMENT_RECEIVED' ? txnAmount : (netAmt - (data.creditAmount || 0));
+        msg += `?? *Bill No:* INV-${data.id}\n`;
+        msg += `?? *Date:* ${data.entryDate || data.billDate || new Date().toISOString().split('T')[0]}\n`;
+        msg += `?? *Bill Amount:* ${appSettings.currencySymbol}${formatCurrency(netAmt)}\n`;
+        if (displayPaid > 0) {
+            msg += `? *Paid Amount:* ${appSettings.currencySymbol}${formatCurrency(displayPaid)}\n`;
+        }
+        if (data.creditAmount > 0) {
+            msg += `?? *Credit Pending:* ${appSettings.currencySymbol}${formatCurrency(data.creditAmount)}\n`;
+        }
     }
 
     msg += `\nFor any queries, please contact us.\n\nRegards,\n${appSettings.companyName || 'Anmol Fabrics'}`;
 
     try {
-        // Populate Invoice HTML silently
-        populateInvoiceForPdf(data);
-        
-        const printArea = document.getElementById('invoicePrintArea');
-        // Generate PDF base64 using html2pdf
+        let pdfBase64;
         const opt = {
             margin: 0.2,
-            filename: `INV-${data.id}.pdf`,
+            filename: `${(isPayment || isReturn) ? 'REC' : 'INV'}-${data.id}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2 },
             jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
         };
-        
-        document.body.classList.add('printing-invoice');
-        let pdfBase64;
-        try {
-            pdfBase64 = await html2pdf().set(opt).from(printArea).output('datauristring');
-        } finally {
-            document.body.classList.remove('printing-invoice');
+
+        if (isPayment || isReturn) {
+            // Generate Receipt HTML
+            let calculationString = isCashReturn 
+                ? `${amountLabel}: ${formatCurrency(txnAmount)}`
+                : `Balance: ${formatCurrency(previousCredit)} DR &nbsp;&nbsp;&nbsp; ${amountLabel}: ${formatCurrency(txnAmount)} &nbsp;&nbsp;&nbsp; Closing Balance: ${formatCurrency(currentCredit)} DR`;
+
+            let city = "-";
+            if (data.customer && data.customer.city) city = data.customer.city;
+            else if (data.city) city = data.city;
+
+            let htmlContent = `
+            <div id="tempWaReceiptPrintArea" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: white; color: black; padding: 20px; width: 800px;">
+                <div style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; text-align: center;">
+                    <h2>${appSettings.companyName || 'My Company'}</h2>
+                    <h3>${typeLabel.toUpperCase()}</h3>
+                    <p><strong>Receipt No:</strong> ${(isReturn ? 'RET-' : 'REC-') + data.id} &nbsp;&nbsp; <strong>Date:</strong> ${new Date(data.entryDate || data.billDate || new Date().toISOString().split('T')[0]).toLocaleDateString()}</p>
+                </div>
+                
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                    <tr>
+                        <th style="padding: 10px; border: 1px solid #000; text-align: left; background-color: #f0f0f0;">CUSTOMER NAME</th>
+                        <th style="padding: 10px; border: 1px solid #000; text-align: left; background-color: #f0f0f0;">CONTACT NUMBER</th>
+                        <th style="padding: 10px; border: 1px solid #000; text-align: left; background-color: #f0f0f0;">CITY</th>
+                        <th style="padding: 10px; border: 1px solid #000; text-align: left; background-color: #f0f0f0;">REMARKS</th>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #000; text-align: left;">${data.customerName}</td>
+                        <td style="padding: 10px; border: 1px solid #000; text-align: left;">${data.contactNumber || '-'}</td>
+                        <td style="padding: 10px; border: 1px solid #000; text-align: left;">${city}</td>
+                        <td style="padding: 10px; border: 1px solid #000; text-align: left;">${data.remarks || '-'}</td>
+                    </tr>
+                </table>
+                
+                <div style="font-weight: bold; font-size: 14px; margin-top: 15px; text-align: right; border: 1px solid #000; padding: 10px; background-color: #f9f9f9;">
+                    ${calculationString}
+                </div>
+                
+                <div style="margin-top: 60px; display: flex; justify-content: space-between;">
+                    <div><br>_________________________<br>Customer Signature</div>
+                    <div style="text-align: right;"><br>_________________________<br>Authorized Signatory</div>
+                </div>
+            </div>`;
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = htmlContent;
+            document.body.appendChild(tempDiv);
+            try {
+                pdfBase64 = await html2pdf().set(opt).from(tempDiv.firstElementChild).output('datauristring');
+            } finally {
+                document.body.removeChild(tempDiv);
+            }
+        } else {
+            populateInvoiceForPdf(data);
+            const printArea = document.getElementById('invoicePrintArea');
+            document.body.classList.add('printing-invoice');
+            try {
+                pdfBase64 = await html2pdf().set(opt).from(printArea).output('datauristring');
+            } finally {
+                document.body.classList.remove('printing-invoice');
+            }
         }
 
         const res = await fetch('/api/whatsapp/send-file', {
@@ -274,7 +357,7 @@ async function processSendWa(data) {
             body: JSON.stringify({ 
                 phone: phone, 
                 fileBase64: pdfBase64,
-                filename: `INV-${data.id}.pdf`,
+                filename: `${(isPayment || isReturn) ? 'REC' : 'INV'}-${data.id}.pdf`,
                 caption: msg 
             })
         });
