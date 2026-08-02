@@ -314,7 +314,7 @@ async function processSendWa(data) {
             else if (data.city) city = data.city;
 
             let htmlContent = `
-            <div id="tempWaReceiptPrintArea" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: white; color: black; padding: 15px; width: 718px; max-width: 718px; margin: 0 auto; box-sizing: border-box;">
+            <div id="tempWaReceiptPrintArea" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: white; color: black; padding: 20px; width: 680px; max-width: 680px; margin: 0 auto; box-sizing: border-box;">
                 <div style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; text-align: center;">
                     <h2>${appSettings.companyName || 'My Company'}</h2>
                     <h3>${typeLabel.toUpperCase()}</h3>
@@ -350,7 +350,7 @@ async function processSendWa(data) {
             tempFrame.style.position = 'absolute';
             tempFrame.style.top = '-9999px';
             tempFrame.style.left = '-9999px';
-            tempFrame.style.width = '718px';
+            tempFrame.style.width = '680px';
             tempFrame.style.height = '1200px';
             document.body.appendChild(tempFrame);
 
@@ -373,7 +373,7 @@ async function processSendWa(data) {
             tempFrame.style.position = 'absolute';
             tempFrame.style.top = '-9999px';
             tempFrame.style.left = '-9999px';
-            tempFrame.style.width = '718px';
+            tempFrame.style.width = '680px';
             tempFrame.style.height = '1200px';
             document.body.appendChild(tempFrame);
 
@@ -382,9 +382,9 @@ async function processSendWa(data) {
             doc.write('<html><head><title>Invoice</title>');
             doc.write('<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">');
             doc.write('<link href="/assets/css/style.css" rel="stylesheet">');
-            doc.write('<style>body { background: white !important; color: black !important; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; } table th, table td { word-wrap: break-word; overflow-wrap: break-word; }</style>');
-            doc.write('</head><body style="padding: 15px; margin: 0; background: white;">');
-            doc.write('<div id="pdfInvoiceContainer" style="width: 718px; max-width: 718px; margin: 0 auto; box-sizing: border-box;">');
+            doc.write('<style>body { background: white !important; color: black !important; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; } table th, table td { word-wrap: break-word; overflow-wrap: break-word; } .row { margin-left: 0 !important; margin-right: 0 !important; }</style>');
+            doc.write('</head><body style="margin: 0; padding: 0; background: white;">');
+            doc.write('<div id="pdfInvoiceContainer" style="width: 680px; max-width: 680px; margin: 0 auto; padding: 20px; box-sizing: border-box; overflow: hidden;">');
             doc.write(printArea.innerHTML);
             doc.write('</div></body></html>');
             doc.close();
@@ -439,8 +439,8 @@ function populateInvoiceForPdf(bill) {
     document.getElementById('invSignatory').innerText = appSettings.printSignatory || 'Authorized Signatory';
     
     const printArea = document.getElementById('invoicePrintArea');
-    printArea.style.maxWidth = '800px';
-    printArea.style.fontSize = '1rem';
+    printArea.style.maxWidth = '680px';
+    printArea.style.fontSize = '0.95rem';
     
     let salesmanName = '-';
     if (bill.salesman) salesmanName = bill.salesman.name;
