@@ -213,13 +213,24 @@ public class SalesRecordController {
         return ResponseEntity.ok(savedRecord);
     }
 
+    private List<SalesRecord> getCustomerRecordsFast(String customerName, String contact) {
+        final String finalCustomerName = customerName != null ? customerName.trim() : "";
+        final String finalContactNum = contact != null ? contact.trim() : "";
+        if (finalCustomerName.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        if (!finalContactNum.isEmpty()) {
+            return salesRecordRepository.findByCustomerNameAndContact(finalCustomerName, finalContactNum);
+        } else {
+            return salesRecordRepository.findByCustomerName(finalCustomerName);
+        }
+    }
+
     @GetMapping("/customer/credit")
     @PreAuthorize("@customPermissionEvaluator.hasAccess(authentication, 'Sales Entries', 'VIEW') or @customPermissionEvaluator.hasAccess(authentication, 'Customers', 'VIEW')")
     public ResponseEntity<java.math.BigDecimal> getCustomerCredit(@RequestParam(required = false) String customerName, @RequestParam(required = false) String contact, @RequestParam(required = false) Long upToId) {
-        final String finalCustomerName = customerName != null ? customerName : "";
-        final String finalContactNum = contact != null ? contact : "";
-        java.math.BigDecimal totalCredit = salesRecordRepository.findByIsDeletedFalse().stream()
-            .filter(r -> r.getCustomer() != null && finalCustomerName.equals(r.getCustomer().getCustomerName()) && finalContactNum.equals(r.getCustomer().getContactNumber()))
+        List<SalesRecord> records = getCustomerRecordsFast(customerName, contact);
+        java.math.BigDecimal totalCredit = records.stream()
             .filter(r -> upToId == null || r.getId() <= upToId)
             .map(SalesRecord::getCreditAmount)
             .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
@@ -229,12 +240,7 @@ public class SalesRecordController {
     @GetMapping("/customer/available-cash-refund")
     @PreAuthorize("@customPermissionEvaluator.hasAccess(authentication, 'Sales Entries', 'VIEW') or @customPermissionEvaluator.hasAccess(authentication, 'Customers', 'VIEW')")
     public ResponseEntity<Map<String, Object>> getAvailableCashRefund(@RequestParam(required = false) String customerName, @RequestParam(required = false) String contact) {
-        final String finalCustomerName = customerName != null ? customerName : "";
-        final String finalContactNum = contact != null ? contact : "";
-        
-        List<SalesRecord> records = salesRecordRepository.findByIsDeletedFalse().stream()
-            .filter(r -> r.getCustomer() != null && finalCustomerName.equals(r.getCustomer().getCustomerName()) && finalContactNum.equals(r.getCustomer().getContactNumber()))
-            .collect(java.util.stream.Collectors.toList());
+        List<SalesRecord> records = getCustomerRecordsFast(customerName, contact);
 
         java.math.BigDecimal totalCashBills = java.math.BigDecimal.ZERO;
         java.math.BigDecimal totalCashRefunds = java.math.BigDecimal.ZERO;
@@ -264,12 +270,7 @@ public class SalesRecordController {
     @GetMapping("/customer/available-credit-refund")
     @PreAuthorize("@customPermissionEvaluator.hasAccess(authentication, 'Sales Entries', 'VIEW') or @customPermissionEvaluator.hasAccess(authentication, 'Customers', 'VIEW')")
     public ResponseEntity<Map<String, Object>> getAvailableCreditRefund(@RequestParam(required = false) String customerName, @RequestParam(required = false) String contact) {
-        final String finalCustomerName = customerName != null ? customerName : "";
-        final String finalContactNum = contact != null ? contact : "";
-        
-        List<SalesRecord> records = salesRecordRepository.findByIsDeletedFalse().stream()
-            .filter(r -> r.getCustomer() != null && finalCustomerName.equals(r.getCustomer().getCustomerName()) && finalContactNum.equals(r.getCustomer().getContactNumber()))
-            .collect(java.util.stream.Collectors.toList());
+        List<SalesRecord> records = getCustomerRecordsFast(customerName, contact);
 
         java.math.BigDecimal totalCredit = java.math.BigDecimal.ZERO;
         int creditBillsCount = 0;
@@ -285,6 +286,46 @@ public class SalesRecordController {
 
         Map<String, Object> result = new HashMap<>();
         result.put("availableAmount", totalCredit);
+        result.put("creditBillsCount", creditBillsCount);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/customer/refund-summary")
+    @PreAuthorize("@customPermissionEvaluator.hasAccess(authentication, 'Sales Entries', 'VIEW') or @customPermissionEvaluator.hasAccess(authentication, 'Customers', 'VIEW')")
+    public ResponseEntity<Map<String, Object>> getCustomerRefundSummary(@RequestParam(required = false) String customerName, @RequestParam(required = false) String contact) {
+        List<SalesRecord> records = getCustomerRecordsFast(customerName, contact);
+
+        java.math.BigDecimal totalCredit = java.math.BigDecimal.ZERO;
+        java.math.BigDecimal totalCashBills = java.math.BigDecimal.ZERO;
+        java.math.BigDecimal totalCashRefunds = java.math.BigDecimal.ZERO;
+        int cashBillsCount = 0;
+        int creditBillsCount = 0;
+
+        for (SalesRecord r : records) {
+            totalCredit = totalCredit.add(r.getCreditAmount());
+            if ("CASH".equals(r.getBillType()) || "CASH_BILL".equals(r.getBillType())) {
+                totalCashBills = totalCashBills.add(r.getNetAmount());
+                cashBillsCount++;
+            } else if ("CASH_RETURN".equals(r.getBillType())) {
+                totalCashRefunds = totalCashRefunds.add(r.getNetAmount());
+            }
+            if ("CREDIT".equals(r.getBillType()) || "CREDIT_BILL".equals(r.getBillType()) || "DEBIT".equals(r.getBillType())) {
+                if (r.getCreditAmount().compareTo(java.math.BigDecimal.ZERO) > 0) {
+                    creditBillsCount++;
+                }
+            }
+        }
+
+        java.math.BigDecimal availableCashAmount = totalCashBills.add(totalCashRefunds);
+        if (availableCashAmount.compareTo(java.math.BigDecimal.ZERO) < 0) {
+            availableCashAmount = java.math.BigDecimal.ZERO;
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("creditAmount", totalCredit);
+        result.put("availableCashAmount", availableCashAmount);
+        result.put("cashBillsCount", cashBillsCount);
+        result.put("availableCreditAmount", totalCredit);
         result.put("creditBillsCount", creditBillsCount);
         return ResponseEntity.ok(result);
     }

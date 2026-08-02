@@ -2815,12 +2815,60 @@ if (isProductReturnEl) {
     });
 }
 
-document.getElementById('billCustomerName').addEventListener('input', () => {
-    if(document.querySelector('input[name="entryType"]:checked').value === 'DEBIT') toggleEntryTypeMode();
-});
-document.getElementById('billContact').addEventListener('input', () => {
-    if(document.querySelector('input[name="entryType"]:checked').value === 'DEBIT') toggleEntryTypeMode();
-});
+let refundSummaryController = null;
+async function fetchCustomerRefundSummary() {
+    const contactEl = document.getElementById('billContact');
+    const customerNameEl = document.getElementById('billCustomerName');
+    const contact = contactEl ? contactEl.value.trim() : '';
+    const customerName = customerNameEl ? customerNameEl.value.trim() : '';
+    
+    if(customerName) {
+        try {
+            if (refundSummaryController) refundSummaryController.abort();
+            refundSummaryController = new AbortController();
+            const queryParams = new URLSearchParams({ customerName: customerName, contact: contact });
+            const res = await fetch(`/api/sales/customer/refund-summary?${queryParams.toString()}`, { signal: refundSummaryController.signal });
+            if (res.ok) {
+                const data = await res.json();
+                currentCustomerCredit = parseFloat(data.creditAmount) || 0;
+                currentCashRefundLimit = parseFloat(data.availableCashAmount) || 0;
+                const availableCreditAmount = parseFloat(data.availableCreditAmount) || 0;
+                
+                const limitText = document.getElementById('cashRefundLimitText');
+                if(limitText) {
+                    limitText.innerHTML = `(Available: ${formatCurrency(currentCashRefundLimit)} from ${data.cashBillsCount || 0} Cash Bills)`;
+                }
+                const creditLimitText = document.getElementById('creditRefundLimitText');
+                if(creditLimitText) {
+                    creditLimitText.innerHTML = `(Available: ${formatCurrency(availableCreditAmount)} from ${data.creditBillsCount || 0} Credit Bills)`;
+                }
+                
+                const pendingEl = document.getElementById('creditPendingAmount');
+                if (pendingEl) {
+                    pendingEl.innerText = formatCurrency(currentCustomerCredit);
+                }
+            }
+        } catch(e) {
+            if (e.name !== 'AbortError') {
+                currentCustomerCredit = 0;
+                currentCashRefundLimit = 0;
+            }
+        }
+    } else {
+        currentCustomerCredit = 0;
+        currentCashRefundLimit = 0;
+        const limitText = document.getElementById('cashRefundLimitText');
+        if(limitText) limitText.innerHTML = '';
+        const creditLimitText = document.getElementById('creditRefundLimitText');
+        if(creditLimitText) creditLimitText.innerHTML = '';
+        const pendingEl = document.getElementById('creditPendingAmount');
+        if (pendingEl) pendingEl.innerText = '0.00';
+    }
+    if (typeof calculateBill === 'function') calculateBill();
+}
+
+document.getElementById('billCustomerName').addEventListener('input', fetchCustomerRefundSummary);
+document.getElementById('billContact').addEventListener('input', fetchCustomerRefundSummary);
 
 async function toggleEntryTypeMode() {
     const entryType = document.querySelector('input[name="entryType"]:checked').value;
@@ -2847,41 +2895,6 @@ async function toggleEntryTypeMode() {
         paidLabel.innerText = 'Amount Received *';
         btnSaveBill.innerText = 'Save Receipt (Alt+S)';
         document.getElementById('billPaidAmount').readOnly = false;
-        
-        // Auto-fetch bakaya if contact or name is selected
-        const contact = document.getElementById('billContact').value.trim();
-        const customerName = document.getElementById('billCustomerName').value.trim();
-        if(customerName) {
-            try {
-                const queryParams = new URLSearchParams({ customerName: customerName, contact: contact });
-                const res = await fetch(`/api/sales/customer/credit?${queryParams.toString()}`);
-                currentCustomerCredit = parseCurrency(await res.text()) || 0;
-                
-                const refundRes = await fetch(`/api/sales/customer/available-cash-refund?${queryParams.toString()}`);
-                const refundData = await refundRes.json();
-                currentCashRefundLimit = parseFloat(refundData.availableAmount) || 0;
-                
-                const creditRefundRes = await fetch(`/api/sales/customer/available-credit-refund?${queryParams.toString()}`);
-                const creditRefundData = await creditRefundRes.json();
-                const availableCreditAmount = parseFloat(creditRefundData.availableAmount) || 0;
-                
-                const limitText = document.getElementById('cashRefundLimitText');
-                if(limitText) {
-                    limitText.innerHTML = `(Available: ${formatCurrency(currentCashRefundLimit)} from ${refundData.cashBillsCount} Cash Bills)`;
-                }
-                const creditLimitText = document.getElementById('creditRefundLimitText');
-                if(creditLimitText) {
-                    creditLimitText.innerHTML = `(Available: ${formatCurrency(availableCreditAmount)} from ${creditRefundData.creditBillsCount} Credit Bills)`;
-                }
-            } catch(e) {
-                currentCustomerCredit = 0;
-                currentCashRefundLimit = 0;
-            }
-        } else {
-            currentCustomerCredit = 0;
-            currentCashRefundLimit = 0;
-        }
-        if (typeof calculateBill === 'function') calculateBill();
     } else {
         itemsSection.style.display = 'block';
         netPayableRow.style.display = 'flex';
@@ -2893,8 +2906,8 @@ async function toggleEntryTypeMode() {
         creditPendingRow.style.display = 'flex';
         paidLabel.innerText = 'Paid Amount *';
         btnSaveBill.innerText = 'Save Sales Voucher (Alt+S)';
-        calculateBill();
     }
+    await fetchCustomerRefundSummary();
 }
 
 document.getElementById('btnSaveBill').addEventListener('click', async () => {
