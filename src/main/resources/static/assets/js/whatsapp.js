@@ -310,7 +310,7 @@ async function processSendWa(data) {
             targetId = 'receiptPrintArea';
         } else {
             htmlContent = window.generateInvoiceHtml(data, data.items || [], "INV-");
-            targetId = 'invoicePrintArea';
+            targetId = 'waInvoicePrintArea';
         }
 
         const container = document.createElement('div');
@@ -329,6 +329,9 @@ async function processSendWa(data) {
 
         try {
             const targetEl = container.querySelector('#' + targetId) || container.querySelector('div') || container.firstElementChild;
+            if (targetEl && targetEl.style) {
+                targetEl.style.display = 'block';
+            }
             pdfBase64 = await html2pdf().set(opt).from(targetEl).output('datauristring');
         } finally {
             if (container && container.parentNode) {
