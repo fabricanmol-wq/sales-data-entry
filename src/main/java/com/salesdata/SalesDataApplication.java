@@ -22,6 +22,21 @@ public class SalesDataApplication {
         TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kolkata"));
     }
 
+    @org.springframework.context.annotation.Bean
+    public org.springframework.boot.CommandLineRunner alterSettingsColumn(org.springframework.jdbc.core.JdbcTemplate jdbcTemplate, javax.sql.DataSource dataSource) {
+        return args -> {
+            try (java.sql.Connection conn = dataSource.getConnection()) {
+                String driver = conn.getMetaData().getDriverName().toLowerCase();
+                if (driver.contains("postgresql")) {
+                    jdbcTemplate.execute("ALTER TABLE settings ALTER COLUMN setting_value TYPE TEXT");
+                    System.out.println("Successfully altered setting_value to TEXT in PostgreSQL.");
+                }
+            } catch (Exception e) {
+                System.out.println("Could not alter setting_value to TEXT: " + e.getMessage());
+            }
+        };
+    }
+
     public static void main(String[] args) {
         try {
             File restoreFile = new File("sales.db.restore");
