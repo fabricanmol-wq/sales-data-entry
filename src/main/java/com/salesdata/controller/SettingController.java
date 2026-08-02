@@ -57,6 +57,7 @@ public class SettingController {
 
     @PostMapping
     @PreAuthorize("@customPermissionEvaluator.hasAccess(authentication, 'Settings', 'CREATE')")
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<?> saveSettings(@RequestBody Map<String, String> newSettings) {
         for (Map.Entry<String, String> entry : newSettings.entrySet()) {
             Optional<Setting> opt = settingRepository.findById(entry.getKey());

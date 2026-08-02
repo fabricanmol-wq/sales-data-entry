@@ -3008,6 +3008,15 @@ async function toggleEntryTypeMode() {
 }
 
 document.getElementById('btnSaveBill').addEventListener('click', async () => {
+    const btn = document.getElementById('btnSaveBill');
+    const originalText = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = 'Processing...';
+    setTimeout(() => {
+        btn.disabled = false;
+        btn.innerText = originalText;
+    }, 3000);
+
     const entryType = document.querySelector('input[name="entryType"]:checked').value;
     
     if (entryType !== 'DEBIT' && currentBillItems.length === 0) {

@@ -37,8 +37,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnSaveSendWa) {
         btnSaveSendWa.addEventListener('click', (e) => {
             e.preventDefault();
+            btnSaveSendWa.disabled = true;
+            const originalText = btnSaveSendWa.innerText;
+            btnSaveSendWa.innerText = 'Processing...';
             window.sendWaAfterSave = true;
             document.getElementById('btnSaveBill').click();
+            
+            setTimeout(() => {
+                btnSaveSendWa.disabled = false;
+                btnSaveSendWa.innerText = originalText;
+            }, 3000);
         });
     }
 
