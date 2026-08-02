@@ -303,62 +303,36 @@ async function processSendWa(data) {
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
+        let htmlContent;
+        let targetId;
         if (isPayment || isReturn) {
-            // Generate Receipt HTML exactly from the original View Bill generator in app.js
-            const htmlContent = await window.generateReceiptHtml(data);
-            
-            let tempFrame = document.createElement('iframe');
-            tempFrame.style.position = 'absolute';
-            tempFrame.style.top = '-9999px';
-            tempFrame.style.left = '-9999px';
-            tempFrame.style.width = '680px';
-            tempFrame.style.height = '1200px';
-            document.body.appendChild(tempFrame);
-
-            const doc = tempFrame.contentWindow.document;
-            doc.open();
-            doc.write(htmlContent);
-            doc.close();
-
-            try {
-                const targetEl = doc.getElementById('receiptPrintArea');
-                pdfBase64 = await html2pdf().set(opt).from(targetEl).output('datauristring');
-            } finally {
-                document.body.removeChild(tempFrame);
-            }
+            htmlContent = await window.generateReceiptHtml(data);
+            targetId = 'receiptPrintArea';
         } else {
-            // Populate using the exact original View Bill function from app.js
-            printInvoice(data, data.items || [], "INV-");
-            const printArea = document.getElementById('invoicePrintArea');
-            
-            let tempFrame = document.createElement('iframe');
-            tempFrame.style.position = 'absolute';
-            tempFrame.style.top = '-9999px';
-            tempFrame.style.left = '-9999px';
-            tempFrame.style.width = '680px';
-            tempFrame.style.height = '1200px';
-            document.body.appendChild(tempFrame);
+            htmlContent = window.generateInvoiceHtml(data, data.items || [], "INV-");
+            targetId = 'invoicePrintArea';
+        }
 
-            const doc = tempFrame.contentWindow.document;
-            doc.open();
-            doc.write('<html><head><title>Invoice</title>');
-            doc.write('<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">');
-            doc.write('<link href="/assets/css/style.css" rel="stylesheet">');
-            doc.write('<style>body { background: white !important; color: black !important; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; } table th, table td { word-wrap: break-word; overflow-wrap: break-word; } .row { margin-left: 0 !important; margin-right: 0 !important; }</style>');
-            doc.write('</head><body style="margin: 0; padding: 0; background: white;">');
-            doc.write('<div id="pdfInvoiceContainer" style="width: 680px; max-width: 680px; margin: 0 auto; padding: 20px; box-sizing: border-box; overflow: hidden;">');
-            doc.write(printArea.innerHTML);
-            doc.write('</div></body></html>');
-            doc.close();
+        let tempFrame = document.createElement('iframe');
+        tempFrame.style.position = 'absolute';
+        tempFrame.style.top = '-9999px';
+        tempFrame.style.left = '-9999px';
+        tempFrame.style.width = '720px';
+        tempFrame.style.height = '1400px';
+        document.body.appendChild(tempFrame);
 
-            await new Promise(resolve => setTimeout(resolve, 300));
+        const doc = tempFrame.contentWindow.document;
+        doc.open();
+        doc.write(htmlContent);
+        doc.close();
 
-            try {
-                const targetEl = doc.getElementById('pdfInvoiceContainer');
-                pdfBase64 = await html2pdf().set(opt).from(targetEl).output('datauristring');
-            } finally {
-                document.body.removeChild(tempFrame);
-            }
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        try {
+            const targetEl = doc.getElementById(targetId) || doc.body.firstElementChild;
+            pdfBase64 = await html2pdf().set(opt).from(targetEl).output('datauristring');
+        } finally {
+            document.body.removeChild(tempFrame);
         }
 
         const res = await fetch('/api/whatsapp/send-file', {

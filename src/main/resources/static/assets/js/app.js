@@ -3071,7 +3071,7 @@ async function printOldInvoice(bill) {
     }
 }
 
-function printInvoice(bill, itemsDetails, prefix = "INV-") {
+window.generateInvoiceHtml = function(bill, itemsDetails, prefix = "INV-") {
     document.getElementById('invBusinessName').innerText = appSettings.companyName || "My Company";
     document.getElementById('invCustomerName').innerText = bill.customerName;
     document.getElementById('invCustomerContact').innerText = bill.contactNumber;
@@ -3139,6 +3139,18 @@ function printInvoice(bill, itemsDetails, prefix = "INV-") {
     document.getElementById('invPaid').innerText = appSettings.currencySymbol + formatCurrency(bill.paidAmount);
     document.getElementById('invCredit').innerText = appSettings.currencySymbol + formatCurrency(bill.creditAmount);
     
+    return `<html><head><title>Print Invoice</title>` +
+           `<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">` +
+           `<link href="/assets/css/style.css" rel="stylesheet">` +
+           `<style>body { background: white !important; color: black !important; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; } .row { margin-left: 0 !important; margin-right: 0 !important; }</style>` +
+           `</head><body style="padding: 20px; background: white;">` +
+           `<div style="max-width: ${printArea.style.maxWidth}; margin: 0 auto; font-size: ${printArea.style.fontSize};">` +
+           document.getElementById('invoicePrintArea').innerHTML +
+           `</div></body></html>`;
+};
+
+function printInvoice(bill, itemsDetails, prefix = "INV-") {
+    const htmlContent = window.generateInvoiceHtml(bill, itemsDetails, prefix);
     let printFrame = document.getElementById('globalPrintFrame');
     if (!printFrame) {
         printFrame = document.createElement('iframe');
@@ -3148,14 +3160,7 @@ function printInvoice(bill, itemsDetails, prefix = "INV-") {
     }
     const doc = printFrame.contentWindow.document;
     doc.open();
-    doc.write('<html><head><title>Print Invoice</title>');
-    doc.write('<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">');
-    doc.write('<link href="/assets/css/style.css" rel="stylesheet">');
-    doc.write('<style>body { background: white !important; color: black !important; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }</style>');
-    doc.write('</head><body style="padding: 20px;">');
-    doc.write('<div style="max-width: ' + printArea.style.maxWidth + '; margin: 0 auto; font-size: ' + printArea.style.fontSize + ';">');
-    doc.write(document.getElementById('invoicePrintArea').innerHTML);
-    doc.write('</div></body></html>');
+    doc.write(htmlContent);
     doc.close();
 
     setTimeout(() => {
