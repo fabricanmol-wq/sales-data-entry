@@ -254,26 +254,26 @@ async function processSendWa(data) {
     msg += `Thank you for your business. Here is your ${typeLabel} summary:\n\n`;
     
     if (isPayment || isReturn) {
-        msg += `?? *Receipt No:* ${(isReturn ? 'RET-' : 'REC-')}${data.id}\n`;
-        msg += `?? *Date:* ${data.entryDate || data.billDate || new Date().toISOString().split('T')[0]}\n`;
+        msg += `🧾 *Receipt No:* ${(isReturn ? 'RET-' : 'REC-')}${data.id}\n`;
+        msg += `📅 *Date:* ${data.entryDate || data.billDate || new Date().toISOString().split('T')[0]}\n`;
         
         if (isCashReturn) {
-            msg += `? *${amountLabel}:* ${appSettings.currencySymbol}${formatCurrency(txnAmount)}\n`;
+            msg += `✅ *${amountLabel}:* ${appSettings.currencySymbol}${formatCurrency(txnAmount)}\n`;
         } else {
-            msg += `?? *Balance:* ${formatCurrency(previousCredit)} DR\n`;
-            msg += `? *${amountLabel}:* ${formatCurrency(txnAmount)}\n`;
-            msg += `?? *Closing Balance:* ${formatCurrency(currentCredit)} DR\n`;
+            msg += `💰 *Balance:* ${formatCurrency(previousCredit)} DR\n`;
+            msg += `✅ *${amountLabel}:* ${formatCurrency(txnAmount)}\n`;
+            msg += `📊 *Closing Balance:* ${formatCurrency(currentCredit)} DR\n`;
         }
     } else {
         const displayPaid = data.billType === 'PAYMENT_RECEIVED' ? txnAmount : (netAmt - (data.creditAmount || 0));
-        msg += `?? *Bill No:* INV-${data.id}\n`;
-        msg += `?? *Date:* ${data.entryDate || data.billDate || new Date().toISOString().split('T')[0]}\n`;
-        msg += `?? *Bill Amount:* ${appSettings.currencySymbol}${formatCurrency(netAmt)}\n`;
+        msg += `🧾 *Bill No:* INV-${data.id}\n`;
+        msg += `📅 *Date:* ${data.entryDate || data.billDate || new Date().toISOString().split('T')[0]}\n`;
+        msg += `💰 *Bill Amount:* ${appSettings.currencySymbol}${formatCurrency(netAmt)}\n`;
         if (displayPaid > 0) {
-            msg += `? *Paid Amount:* ${appSettings.currencySymbol}${formatCurrency(displayPaid)}\n`;
+            msg += `✅ *Paid Amount:* ${appSettings.currencySymbol}${formatCurrency(displayPaid)}\n`;
         }
         if (data.creditAmount > 0) {
-            msg += `?? *Credit Pending:* ${appSettings.currencySymbol}${formatCurrency(data.creditAmount)}\n`;
+            msg += `⚠️ *Credit Pending:* ${appSettings.currencySymbol}${formatCurrency(data.creditAmount)}\n`;
         }
     }
 
