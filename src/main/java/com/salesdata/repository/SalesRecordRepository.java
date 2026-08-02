@@ -21,7 +21,7 @@ public interface SalesRecordRepository extends JpaRepository<SalesRecord, Long>,
     @Query("SELECT DISTINCT s.customer FROM SalesRecord s WHERE s.isDeleted = false")
     List<Customer> findUniqueCustomersBasic();
 
-    @Query("SELECT s FROM SalesRecord s WHERE s.isDeleted = false AND s.customer.customerName = :customerName AND (:contact = '' OR :contact IS NULL OR s.customer.contactNumber = :contact)")
+    @Query("SELECT s FROM SalesRecord s WHERE s.isDeleted = false AND s.customer.customerName = :customerName AND s.customer.contactNumber = :contact")
     List<SalesRecord> findByCustomerNameAndContact(@org.springframework.data.repository.query.Param("customerName") String customerName, @org.springframework.data.repository.query.Param("contact") String contact);
 
     @Query("SELECT s FROM SalesRecord s WHERE s.isDeleted = false AND s.customer.customerName = :customerName")
