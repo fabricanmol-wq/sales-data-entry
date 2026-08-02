@@ -3214,14 +3214,14 @@ window.generateReceiptHtml = async function(record) {
     <head>
         <title>Print Receipt</title>
         <style>
-            body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: white; color: black; padding: 20px; margin: 0; }
-            .receipt-container { width: 680px; max-width: 680px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; box-sizing: border-box; }
-            .text-center { text-align: center; }
-            .header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-            .details-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: fixed; }
-            .details-table th, .details-table td { padding: 10px; border: 1px solid #000; text-align: left; word-wrap: break-word; overflow-wrap: break-word; }
-            .details-table th { background-color: #f0f0f0; }
-            .calc-line { font-weight: bold; font-size: 14px; margin-top: 15px; text-align: right; border: 1px solid #000; padding: 10px; background-color: #f9f9f9; }
+            body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: white !important; color: black !important; padding: 20px; margin: 0; }
+            .receipt-container { width: 680px; max-width: 680px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; box-sizing: border-box; background: white !important; color: black !important; }
+            .receipt-container .text-center { text-align: center; }
+            .receipt-container .header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+            .receipt-container .details-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: fixed; }
+            .receipt-container .details-table th, .receipt-container .details-table td { padding: 10px; border: 1px solid #000 !important; text-align: left; word-wrap: break-word; overflow-wrap: break-word; color: black !important; }
+            .receipt-container .details-table th { background-color: #f0f0f0 !important; color: black !important; font-weight: bold; }
+            .receipt-container .calc-line { font-weight: bold; font-size: 14px; margin-top: 15px; text-align: right; border: 1px solid #000 !important; padding: 10px; background-color: #f9f9f9 !important; color: black !important; }
         </style>
     </head>
     <body>

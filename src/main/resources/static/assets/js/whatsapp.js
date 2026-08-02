@@ -313,26 +313,27 @@ async function processSendWa(data) {
             targetId = 'invoicePrintArea';
         }
 
-        let tempFrame = document.createElement('iframe');
-        tempFrame.style.position = 'absolute';
-        tempFrame.style.top = '-9999px';
-        tempFrame.style.left = '-9999px';
-        tempFrame.style.width = '720px';
-        tempFrame.style.height = '1400px';
-        document.body.appendChild(tempFrame);
+        const container = document.createElement('div');
+        container.style.position = 'fixed';
+        container.style.top = '0px';
+        container.style.left = '0px';
+        container.style.width = '680px';
+        container.style.zIndex = '-9999';
+        container.style.opacity = '0.01';
+        container.style.pointerEvents = 'none';
+        container.style.background = '#ffffff';
+        container.innerHTML = htmlContent;
+        document.body.appendChild(container);
 
-        const doc = tempFrame.contentWindow.document;
-        doc.open();
-        doc.write(htmlContent);
-        doc.close();
-
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 300));
 
         try {
-            const targetEl = doc.getElementById(targetId) || doc.body.firstElementChild;
+            const targetEl = container.querySelector('#' + targetId) || container.firstElementChild;
             pdfBase64 = await html2pdf().set(opt).from(targetEl).output('datauristring');
         } finally {
-            document.body.removeChild(tempFrame);
+            if (container && container.parentNode) {
+                container.parentNode.removeChild(container);
+            }
         }
 
         const res = await fetch('/api/whatsapp/send-file', {
