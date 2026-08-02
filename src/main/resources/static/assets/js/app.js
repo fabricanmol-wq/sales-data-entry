@@ -62,12 +62,12 @@ document.addEventListener('input', (e) => {
     const target = e.target;
     if (target.tagName !== 'INPUT') return;
     
-    const idName = (target.id + ' ' + target.name).toLowerCase();
+    const idName = ((target.id || '') + ' ' + (target.name || '')).toLowerCase();
     const isAmountField = idName.includes('amount') || idName.includes('discount') || idName.includes('expenses') || 
                           idName.includes('price') || idName.includes('balance') || idName.includes('fund') || 
                           target.classList.contains('comma-input');
     
-    const isContactOrId = idName.includes('contact') || idName.includes('phone') || target.id.toLowerCase().endsWith('id') || target.name.toLowerCase().endsWith('id') || 
+    const isContactOrId = idName.includes('contact') || idName.includes('phone') || (target.id || '').toLowerCase().endsWith('id') || (target.name || '').toLowerCase().endsWith('id') || 
                           idName.includes('qty') || idName.includes('quantity') || idName.includes('password') || idName.includes('username');
     
     if (isAmountField && !isContactOrId) {
@@ -377,7 +377,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Hotkeys
     document.addEventListener('keydown', (e) => {
         if (e.altKey) {
-            const key = e.key.toLowerCase();
+            const key = (e.key || '').toLowerCase();
             if (key === 'c') { e.preventDefault(); document.getElementById('nav-customers')?.click(); }
             if (key === 's') { e.preventDefault(); document.getElementById('nav-stock')?.click(); }
             if (key === 'e') { e.preventDefault(); document.getElementById('exportBtn')?.click(); }
@@ -2618,7 +2618,7 @@ document.addEventListener('keydown', (e) => {
     } else if (e.key === 'F6') {
         e.preventDefault();
         openNewBill('RECEIPT');
-    } else if (e.key.toLowerCase() === 's' && e.altKey) {
+    } else if ((e.key || '').toLowerCase() === 's' && e.altKey) {
         // Alt + S to save voucher
         const billingModal = document.getElementById('billingModal');
         if (billingModal && billingModal.classList.contains('show')) {
@@ -2651,7 +2651,7 @@ document.addEventListener('keydown', (e) => {
     const billingModal = document.getElementById('billingModal');
     if (billingModal && billingModal.classList.contains('show')) {
         // Only trigger if focus is not currently inside an input/textarea (unless it's the product select)
-        const activeTag = (document.activeElement.tagName || '').toLowerCase();
+        const activeTag = (document.activeElement?.tagName || '').toLowerCase();
         if ((activeTag !== 'input' && activeTag !== 'textarea') || document.activeElement.id === 'billProductSelect') {
             
             // Ignore if key is not a single character
@@ -2661,7 +2661,7 @@ document.addEventListener('keydown', (e) => {
                 e.preventDefault();
             }
             
-            shortcutBuffer += e.key.toLowerCase();
+            shortcutBuffer += (e.key || '').toLowerCase();
             clearTimeout(shortcutTimeout);
             
             const prodSelect = document.getElementById('billProductSelect');
