@@ -285,7 +285,7 @@ async function processSendWa(data) {
             margin: [0.3, 0.2, 0.3, 0.2],
             filename: `${(isPayment || isReturn) ? 'REC' : 'INV'}-${data.id}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, width: 800, windowWidth: 800, scrollY: 0, scrollX: 0 },
+            html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
         };
 
@@ -300,7 +300,7 @@ async function processSendWa(data) {
             else if (data.city) city = data.city;
 
             let htmlContent = `
-            <div id="tempWaReceiptPrintArea" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: white; color: black; padding: 20px; width: 800px;">
+            <div id="tempWaReceiptPrintArea" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: white; color: black; padding: 20px; width: 800px; margin: 0 auto;">
                 <div style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; text-align: center;">
                     <h2>${appSettings.companyName || 'My Company'}</h2>
                     <h3>${typeLabel.toUpperCase()}</h3>
@@ -334,14 +334,17 @@ async function processSendWa(data) {
             
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = htmlContent;
-            tempDiv.style.position = 'absolute';
-            tempDiv.style.top = '0';
-            tempDiv.style.left = '0';
-            tempDiv.style.zIndex = '-9999';
             document.body.appendChild(tempDiv);
+            
+            const wrapper = document.getElementById('wrapper');
+            const oldDisplay = wrapper ? wrapper.style.display : '';
+            if (wrapper) wrapper.style.display = 'none';
+            window.scrollTo(0, 0);
+
             try {
                 pdfBase64 = await html2pdf().set(opt).from(tempDiv.firstElementChild).output('datauristring');
             } finally {
+                if (wrapper) wrapper.style.display = oldDisplay;
                 document.body.removeChild(tempDiv);
             }
         } else {
@@ -349,30 +352,15 @@ async function processSendWa(data) {
             const printArea = document.getElementById('invoicePrintArea');
             document.body.classList.add('printing-invoice');
             
-            // Force width for PDF generation
-            const oldWidth = printArea.style.width;
-            const oldMaxWidth = printArea.style.maxWidth;
-            const oldPos = printArea.style.position;
-            const oldTop = printArea.style.top;
-            const oldLeft = printArea.style.left;
-            const oldZIndex = printArea.style.zIndex;
+            const wrapper = document.getElementById('wrapper');
+            const oldDisplay = wrapper ? wrapper.style.display : '';
+            if (wrapper) wrapper.style.display = 'none';
+            window.scrollTo(0, 0);
 
-            printArea.style.width = '800px';
-            printArea.style.maxWidth = '800px';
-            printArea.style.position = 'absolute';
-            printArea.style.top = '0';
-            printArea.style.left = '0';
-            printArea.style.zIndex = '-9999';
-            
             try {
                 pdfBase64 = await html2pdf().set(opt).from(printArea).output('datauristring');
             } finally {
-                printArea.style.width = oldWidth;
-                printArea.style.maxWidth = oldMaxWidth;
-                printArea.style.position = oldPos;
-                printArea.style.top = oldTop;
-                printArea.style.left = oldLeft;
-                printArea.style.zIndex = oldZIndex;
+                if (wrapper) wrapper.style.display = oldDisplay;
                 document.body.classList.remove('printing-invoice');
             }
         }
