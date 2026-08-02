@@ -300,7 +300,7 @@ async function processSendWa(data) {
             else if (data.city) city = data.city;
 
             let htmlContent = `
-            <div id="tempWaReceiptPrintArea" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: white; color: black; padding: 20px; width: 800px; margin: 0 auto; font-size: 10pt;">
+            <div id="tempWaReceiptPrintArea" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: white; color: black; padding: 20px; width: 800px; margin: 0 auto;">
                 <div style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; text-align: center;">
                     <h2>${appSettings.companyName || 'My Company'}</h2>
                     <h3>${typeLabel.toUpperCase()}</h3>
@@ -338,16 +338,13 @@ async function processSendWa(data) {
             
             const wrapper = document.getElementById('wrapper');
             const oldDisplay = wrapper ? wrapper.style.display : '';
-            const oldFontSize = document.body.style.fontSize;
             if (wrapper) wrapper.style.display = 'none';
-            document.body.style.fontSize = '10pt';
             window.scrollTo(0, 0);
 
             try {
                 pdfBase64 = await html2pdf().set(opt).from(tempDiv.firstElementChild).output('datauristring');
             } finally {
                 if (wrapper) wrapper.style.display = oldDisplay;
-                document.body.style.fontSize = oldFontSize;
                 document.body.removeChild(tempDiv);
             }
         } else {
@@ -357,16 +354,13 @@ async function processSendWa(data) {
             
             const wrapper = document.getElementById('wrapper');
             const oldDisplay = wrapper ? wrapper.style.display : '';
-            const oldFontSize = document.body.style.fontSize;
             if (wrapper) wrapper.style.display = 'none';
-            document.body.style.fontSize = '10pt';
             window.scrollTo(0, 0);
 
             try {
                 pdfBase64 = await html2pdf().set(opt).from(printArea).output('datauristring');
             } finally {
                 if (wrapper) wrapper.style.display = oldDisplay;
-                document.body.style.fontSize = oldFontSize;
                 document.body.classList.remove('printing-invoice');
             }
         }
