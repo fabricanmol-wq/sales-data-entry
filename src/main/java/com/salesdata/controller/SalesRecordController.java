@@ -209,8 +209,8 @@ public class SalesRecordController {
         paymentRecord.setRemarks(remarks);
         paymentRecord.setCreatedBy(user);
 
-        salesRecordRepository.save(paymentRecord);
-        return ResponseEntity.ok().build();
+        SalesRecord savedRecord = salesRecordRepository.save(paymentRecord);
+        return ResponseEntity.ok(savedRecord);
     }
 
     @GetMapping("/customer/credit")
