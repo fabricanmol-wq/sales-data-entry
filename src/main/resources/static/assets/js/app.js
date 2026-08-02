@@ -2730,6 +2730,13 @@ async function editBill(bill) {
     
     toggleEntryTypeMode();
     
+    document.getElementById('btnSaveBill').disabled = false;
+    const btnSaveSendWa = document.getElementById('btnSaveSendWa');
+    if (btnSaveSendWa) {
+        btnSaveSendWa.disabled = false;
+        btnSaveSendWa.innerText = 'SAVE & SEND (ALT+W)';
+    }
+    
     if (bill.items) {
         bill.items.forEach(item => {
             currentBillItems.push({
