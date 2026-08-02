@@ -2591,6 +2591,13 @@ async function openNewBill(voucherType = 'SALES') {
     
     toggleEntryTypeMode();
     renderBillItems();
+    
+    document.getElementById('btnSaveBill').disabled = false;
+    const btnSaveSendWa = document.getElementById('btnSaveSendWa');
+    if (btnSaveSendWa) {
+        btnSaveSendWa.disabled = false;
+        btnSaveSendWa.innerText = 'SAVE & SEND (ALT+W)';
+    }
 
     await loadProductsAndSalesmenForBill();
     const modalEl = document.getElementById('billingModal');
@@ -3009,18 +3016,26 @@ async function toggleEntryTypeMode() {
 
 document.getElementById('btnSaveBill').addEventListener('click', async () => {
     const btn = document.getElementById('btnSaveBill');
-    const originalText = btn.innerText;
     btn.disabled = true;
     btn.innerText = 'Processing...';
-    setTimeout(() => {
-        btn.disabled = false;
-        btn.innerText = originalText;
-    }, 3000);
+    
+    function showErrorAndReenable(msg, type) {
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.innerText = (document.getElementById('typeDebit') && document.getElementById('typeDebit').checked) ? 'Save Receipt (Alt+S)' : 'Save Sales Voucher (Alt+S)';
+            const btnWa = document.getElementById('btnSaveSendWa');
+            if (btnWa) {
+                btnWa.disabled = false;
+                btnWa.innerText = 'SAVE & SEND (ALT+W)';
+            }
+        }, 1000);
+        return showNotification(msg, type);
+    }
 
     const entryType = document.querySelector('input[name="entryType"]:checked').value;
     
     if (entryType !== 'DEBIT' && currentBillItems.length === 0) {
-        return showNotification('Add at least one item', 'warning');
+        return showErrorAndReenable('Add at least one item', 'warning');
     }
     
     if (entryType === 'DEBIT') {
@@ -3030,11 +3045,11 @@ document.getElementById('btnSaveBill').addEventListener('click', async () => {
         
         if (isProductReturn && currentReturnType === 'CASH') {
             if (paymentAmount > currentCashRefundLimit) {
-                return showNotification(`Amount exceeds available cash refund limit of ${formatCurrency(currentCashRefundLimit)}`, 'danger');
+                return showErrorAndReenable(`Amount exceeds available cash refund limit of ${formatCurrency(currentCashRefundLimit)}`, 'danger');
             }
         } else if (isProductReturn && currentReturnType === 'CREDIT') {
             if (paymentAmount > currentCustomerCredit) {
-                return showNotification(`Credit Return amount cannot exceed pending balance of ${formatCurrency(currentCustomerCredit)}`, 'danger');
+                return showErrorAndReenable(`Credit Return amount cannot exceed pending balance of ${formatCurrency(currentCustomerCredit)}`, 'danger');
             }
         }
 
@@ -3065,10 +3080,10 @@ document.getElementById('btnSaveBill').addEventListener('click', async () => {
         };
         
         if (!payload.customerName || !payload.contactNumber) {
-            return showNotification('Customer Name and Contact are required', 'danger');
+            return showErrorAndReenable('Customer Name and Contact are required', 'danger');
         }
         if (payload.paymentAmount <= 0) {
-            return showNotification('Please enter a valid amount', 'warning');
+            return showErrorAndReenable('Please enter a valid amount', 'warning');
         }
 
         try {
@@ -3107,10 +3122,10 @@ document.getElementById('btnSaveBill').addEventListener('click', async () => {
                 if (typeof loadEntries === 'function') loadEntries();
                 if (typeof loadDashboard === 'function') loadDashboard();
             } else {
-                showNotification('Failed to process payment', 'danger');
+                showErrorAndReenable('Failed to process payment', 'danger');
             }
         } catch (e) {
-            showNotification('Error processing payment', 'danger');
+            showErrorAndReenable('Error processing payment', 'danger');
         }
         return;
     }
@@ -3134,7 +3149,7 @@ document.getElementById('btnSaveBill').addEventListener('click', async () => {
     };
     
     if (!payload.customerName || !payload.contactNumber) {
-        return showNotification('Customer Name and Contact are required', 'danger');
+        return showErrorAndReenable('Customer Name and Contact are required', 'danger');
     }
 
     try {
@@ -3168,10 +3183,10 @@ document.getElementById('btnSaveBill').addEventListener('click', async () => {
             if (typeof loadUniqueCustomers === 'function') loadUniqueCustomers();
         } else {
             const err = await res.text();
-            showNotification('Failed: ' + err, 'danger');
+            showErrorAndReenable('Failed: ' + err, 'danger');
         }
     } catch (e) {
-        showNotification('Error saving bill', 'danger');
+        showErrorAndReenable('Error saving bill', 'danger');
     }
 });
 
