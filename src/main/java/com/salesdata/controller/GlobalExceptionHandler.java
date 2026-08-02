@@ -32,7 +32,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleDataIntegrityViolationException(DataIntegrityViolationException e) {
         Map<String, String> response = new HashMap<>();
         response.put("error", "Conflict");
-        response.put("message", "Cannot delete this record because it is being used in another section (e.g., Bills). Please remove its references first.");
+        
+        String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+        if (msg.contains("foreign key") || msg.contains("constraint") || msg.contains("reference") || msg.contains("is still referenced")) {
+            response.put("message", "Cannot delete this record because it is being used in another section (e.g., Bills). Please remove its references first.");
+        } else {
+            response.put("message", "Data integrity violation: " + (e.getMostSpecificCause() != null ? e.getMostSpecificCause().getMessage() : "Invalid data length or format."));
+        }
+        
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 }

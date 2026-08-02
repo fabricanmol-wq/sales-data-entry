@@ -13,6 +13,6 @@ public class Setting {
     @Column(name = "setting_key")
     private String key;
 
-    @Column(name = "setting_value")
+    @Column(name = "setting_value", columnDefinition = "TEXT", length = 65535)
     private String value;
 }
