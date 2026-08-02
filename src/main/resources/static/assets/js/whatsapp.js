@@ -121,13 +121,27 @@ async function connectWa() {
         const res = await fetch('/api/whatsapp/start', { method: 'POST' });
         const data = await res.json();
         
-        if (data && data.qrUrl) {
-            if (qrImg) {
-                qrImg.src = data.qrUrl; // Assuming OpenWA returns a QR URL endpoint or Base64
-                qrImg.onload = () => {
-                    spinner.style.display = 'none';
-                    qrImg.style.display = 'inline-block';
-                };
+        if (data) {
+            if (data.status === 'connected') {
+                showWaConnected();
+                const modal = bootstrap.Modal.getInstance(document.getElementById('whatsappModal'));
+                if (modal) modal.hide();
+                return;
+            } else if (data.status === 'waiting_for_qr') {
+                // Poll again in 2 seconds
+                setTimeout(connectWa, 2000);
+                return;
+            } else if (data.qrUrl) {
+                if (qrImg) {
+                    qrImg.src = data.qrUrl; // QR URL or Base64
+                    qrImg.onload = () => {
+                        spinner.style.display = 'none';
+                        qrImg.style.display = 'inline-block';
+                    };
+                }
+                
+        // Poll for connection status while QR is shown
+                pollForConnection();
             }
         }
     } catch (e) {
@@ -135,8 +149,32 @@ async function connectWa() {
     }
 }
 
+let connectionPollInterval;
+
+function pollForConnection() {
+    if (connectionPollInterval) clearInterval(connectionPollInterval);
+    
+    connectionPollInterval = setInterval(async () => {
+        try {
+            const res = await fetch('/api/whatsapp/status');
+            const data = await res.json();
+            
+            if (data.status === 'connected') {
+                clearInterval(connectionPollInterval);
+                showWaConnected();
+                const modal = bootstrap.Modal.getInstance(document.getElementById('whatsappModal'));
+                if (modal) modal.hide();
+                showNotification("WhatsApp connected successfully!");
+            }
+        } catch (e) {
+            console.error("Poll Error:", e);
+        }
+    }, 3000); // Check every 3 seconds
+}
+
 async function disconnectWa() {
     try {
+        if (connectionPollInterval) clearInterval(connectionPollInterval);
         const res = await fetch('/api/whatsapp/logout', { method: 'POST' });
         showNotification("WhatsApp disconnected");
         checkWaStatus();

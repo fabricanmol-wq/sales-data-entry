@@ -30,6 +30,7 @@ public class WhatsAppService {
     private String sessionId;
 
     private final RestTemplate restTemplate = new RestTemplate();
+    private String sessionUuid = null;
 
     private HttpHeaders getHeaders() {
         HttpHeaders headers = new HttpHeaders();
@@ -38,9 +39,39 @@ public class WhatsAppService {
         return headers;
     }
 
+    private synchronized void resolveSessionUuid() {
+        if (sessionUuid != null) return;
+        try {
+            String url = openwaUrl + "/api/sessions";
+            HttpEntity<String> entity = new HttpEntity<>(getHeaders());
+            ResponseEntity<Map[]> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map[].class);
+            Map[] sessions = response.getBody();
+            if (sessions != null) {
+                for (Map session : sessions) {
+                    if (sessionId.equals(session.get("name"))) {
+                        sessionUuid = (String) session.get("id");
+                        return;
+                    }
+                }
+            }
+            // Not found, try creating
+            Map<String, String> body = new HashMap<>();
+            body.put("name", sessionId);
+            HttpEntity<Map<String, String>> postEntity = new HttpEntity<>(body, getHeaders());
+            ResponseEntity<Map> postResponse = restTemplate.exchange(url, HttpMethod.POST, postEntity, Map.class);
+            if (postResponse.getBody() != null) {
+                sessionUuid = (String) postResponse.getBody().get("id");
+            }
+        } catch (Exception e) {
+            logger.error("Failed to resolve session UUID", e);
+            throw new RuntimeException("Could not resolve Session UUID: " + e.getMessage(), e);
+        }
+    }
+
     public Map<String, Object> getStatus() {
         try {
-            String url = openwaUrl + "/api/sessions/" + sessionId + "/status";
+            resolveSessionUuid();
+            String url = openwaUrl + "/api/sessions/" + sessionUuid + "/status";
             HttpEntity<String> entity = new HttpEntity<>(getHeaders());
             ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
             return response.getBody();
@@ -55,16 +86,35 @@ public class WhatsAppService {
 
     public Map<String, Object> startSessionAndGetQr() {
         try {
+            resolveSessionUuid();
             // Start session
-            String startUrl = openwaUrl + "/api/sessions/" + sessionId + "/start";
+            String startUrl = openwaUrl + "/api/sessions/" + sessionUuid + "/start";
             HttpEntity<String> entity = new HttpEntity<>(getHeaders());
-            restTemplate.exchange(startUrl, HttpMethod.POST, entity, Map.class);
+            try {
+                restTemplate.exchange(startUrl, HttpMethod.POST, entity, Map.class);
+            } catch (Exception e) {
+                // Ignore if already started or pending
+            }
             
-            // Note: In OpenWA, the QR might be returned as JSON base64 string depending on accept header, 
-            // or we just return a URL that the frontend can poll.
+            // Check status to see if connected, or if we need QR
+            String statusUrl = openwaUrl + "/api/sessions/" + sessionUuid + "/status";
+            ResponseEntity<Map> statusRes = restTemplate.exchange(statusUrl, HttpMethod.GET, entity, Map.class);
+            String state = (String) statusRes.getBody().get("status");
+
             Map<String, Object> result = new HashMap<>();
-            result.put("qrUrl", openwaUrl + "/api/sessions/" + sessionId + "/qr");
-            result.put("status", "pending");
+            if ("connected".equalsIgnoreCase(state)) {
+                result.put("status", "connected");
+            } else {
+                // Fetch QR code
+                String qrUrl = openwaUrl + "/api/sessions/" + sessionUuid + "/qr";
+                ResponseEntity<Map> qrRes = restTemplate.exchange(qrUrl, HttpMethod.GET, entity, Map.class);
+                if (qrRes.getBody() != null && qrRes.getBody().containsKey("qrCode")) {
+                    result.put("qrUrl", qrRes.getBody().get("qrCode")); // Use actual base64 image data
+                    result.put("status", "pending");
+                } else {
+                    result.put("status", "waiting_for_qr");
+                }
+            }
             return result;
         } catch (Exception e) {
             logger.error("Failed to start WhatsApp session: ", e);
@@ -77,7 +127,8 @@ public class WhatsAppService {
 
     public Map<String, Object> logout() {
         try {
-            String url = openwaUrl + "/api/sessions/" + sessionId + "/stop"; // Verify if it's stop or logout
+            resolveSessionUuid();
+            String url = openwaUrl + "/api/sessions/" + sessionUuid + "/logout";
             HttpEntity<String> entity = new HttpEntity<>(getHeaders());
             ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, entity, Map.class);
             return response.getBody();
@@ -92,7 +143,8 @@ public class WhatsAppService {
 
     public Map<String, Object> sendMessage(String phone, String text) {
         try {
-            String url = openwaUrl + "/api/sessions/" + sessionId + "/messages/send-text";
+            resolveSessionUuid();
+            String url = openwaUrl + "/api/sessions/" + sessionUuid + "/messages/send-text";
             Map<String, String> body = new HashMap<>();
             body.put("chatId", phone.contains("@c.us") ? phone : phone + "@c.us");
             body.put("text", text);
@@ -111,10 +163,12 @@ public class WhatsAppService {
 
     public Map<String, Object> sendFile(String phone, String fileBase64, String filename, String caption) {
         try {
-            String url = openwaUrl + "/api/sessions/" + sessionId + "/messages/send-file";
+            resolveSessionUuid();
+            String url = openwaUrl + "/api/sessions/" + sessionUuid + "/messages/send-document";
             Map<String, String> body = new HashMap<>();
             body.put("chatId", phone.contains("@c.us") ? phone : phone + "@c.us");
-            body.put("file", fileBase64);
+            body.put("base64", fileBase64);
+            body.put("mimetype", "application/pdf");
             body.put("filename", filename);
             body.put("caption", caption);
             
