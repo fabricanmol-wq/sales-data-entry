@@ -2093,6 +2093,8 @@ async function fetchNextBackupTime() {
     } catch (e) {
         console.error("Failed to fetch next backup time", e);
     }
+}
+
 // Call on load
 document.addEventListener('DOMContentLoaded', () => {
     fetchNextBackupTime();
