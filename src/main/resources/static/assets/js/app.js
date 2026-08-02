@@ -3032,12 +3032,14 @@ document.getElementById('btnSaveBill').addEventListener('click', async () => {
             showNotification(editingBillId ? 'Bill updated successfully!' : 'Bill created successfully!');
             bootstrap.Modal.getInstance(document.getElementById('billingModal')).hide();
             
+            let sentToWa = false;
             if (window.sendWaAfterSave) {
                 sendBillToWa(savedBill.id, 'billing');
                 window.sendWaAfterSave = false;
+                sentToWa = true;
             }
             
-            if (!editingBillId) {
+            if (!editingBillId && !sentToWa) {
                 printInvoice(savedBill, savedBill.items || []);
             }
             loadBills();
