@@ -191,6 +191,29 @@ public class WhatsAppService {
         }
     }
 
+    public Map<String, Object> sendBackupDocument(String phone, String fileBase64, String filename, String caption) {
+        try {
+            resolveSessionUuid();
+            String url = openwaUrl + "/api/sessions/" + sessionUuid + "/messages/send-document";
+            Map<String, String> body = new HashMap<>();
+            body.put("chatId", phone.contains("@c.us") ? phone : phone + "@c.us");
+            body.put("base64", fileBase64);
+            body.put("mimetype", "application/json");
+            body.put("filename", filename);
+            body.put("caption", caption);
+            
+            HttpEntity<Map<String, String>> entity = new HttpEntity<>(body, getHeaders());
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, entity, Map.class);
+            return response.getBody();
+        } catch (Exception e) {
+            logger.error("Failed to send WhatsApp backup document: ", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("status", "error");
+            error.put("message", e.getMessage());
+            return error;
+        }
+    }
+
     // Ping every 14 minutes (14 * 60 * 1000 = 840000 ms) to keep the Render server active
     @Scheduled(fixedRate = 840000)
     public void pingOpenWAServer() {

@@ -419,6 +419,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             if(document.getElementById('setting_autoBackupEnabled')) document.getElementById('setting_autoBackupEnabled').value = appSettings.autoBackupEnabled || 'false';
             if(document.getElementById('setting_autoBackupFrequency')) document.getElementById('setting_autoBackupFrequency').value = appSettings.autoBackupFrequency || '2';
             if(document.getElementById('setting_gdriveFolderId')) document.getElementById('setting_gdriveFolderId').value = appSettings.gdriveFolderId || '';
+            
+            // Populate WhatsApp auto backup form
+            if(document.getElementById('setting_waAutoBackupEnabled')) document.getElementById('setting_waAutoBackupEnabled').value = appSettings.waAutoBackupEnabled || 'false';
+            if(document.getElementById('setting_waAutoBackupFrequency')) document.getElementById('setting_waAutoBackupFrequency').value = appSettings.waAutoBackupFrequency || '2';
+            if(document.getElementById('setting_waBackupNumber')) document.getElementById('setting_waBackupNumber').value = appSettings.waBackupNumber || '';
             document.getElementById('setPrintShowTax').value = appSettings.printShowTax || 'YES';
             // Print Header
             document.getElementById('printCompanyName').textContent = appSettings.companyName || 'Sales Data Entry';
@@ -2050,11 +2055,44 @@ async function fetchNextBackupTime() {
             document.getElementById('countdownContainer').style.display = 'none';
             if (backupCountdownInterval) clearInterval(backupCountdownInterval);
         }
+
+        if (data.nextWaBackupTime) {
+            const waContainer = document.getElementById('waCountdownContainer');
+            if (waContainer) waContainer.style.display = 'block';
+            if (waBackupCountdownInterval) clearInterval(waBackupCountdownInterval);
+            
+            waBackupCountdownInterval = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = data.nextWaBackupTime - now;
+                
+                if (distance < 0) {
+                    clearInterval(waBackupCountdownInterval);
+                    const timerEl = document.getElementById('waCountdownTimer');
+                    if (timerEl) timerEl.innerHTML = "WA Backup in progress...";
+                    setTimeout(fetchNextBackupTime, 60000);
+                    return;
+                }
+                
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                
+                const timerEl = document.getElementById('waCountdownTimer');
+                if (timerEl) {
+                    timerEl.innerHTML = 
+                        hours.toString().padStart(2, '0') + ":" + 
+                        minutes.toString().padStart(2, '0') + ":" + 
+                        seconds.toString().padStart(2, '0');
+                }
+            }, 1000);
+        } else {
+            const waContainer = document.getElementById('waCountdownContainer');
+            if (waContainer) waContainer.style.display = 'none';
+            if (waBackupCountdownInterval) clearInterval(waBackupCountdownInterval);
+        }
     } catch (e) {
         console.error("Failed to fetch next backup time", e);
     }
-}
-
 // Call on load
 document.addEventListener('DOMContentLoaded', () => {
     fetchNextBackupTime();
@@ -2082,6 +2120,62 @@ document.getElementById('instantDriveBackupBtn')?.addEventListener('click', asyn
         }
     } catch (error) {
         alert('An error occurred during backup.');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+});
+
+document.getElementById('waAutoBackupForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Saving...';
+    submitBtn.disabled = true;
+
+    try {
+        const res = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            alert('WhatsApp Auto-Backup Settings updated successfully!');
+            fetchNextBackupTime();
+        } else {
+            alert('Failed to update WhatsApp Auto-Backup Settings');
+        }
+    } catch (error) {
+        alert('An error occurred while saving.');
+    } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+});
+
+document.getElementById('instantWaBackupBtn')?.addEventListener('click', async (e) => {
+    const btn = e.target;
+    const originalText = btn.innerHTML;
+    
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Sending to WhatsApp...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/system/backup-to-wa', { method: 'POST' });
+        let msg = 'An error occurred during WhatsApp backup share.';
+        try {
+            const data = await res.json();
+            msg = data.message;
+        } catch (e) {}
+        alert(msg);
+        
+        if (res.ok) {
+            fetchNextBackupTime();
+        }
+    } catch (error) {
+        alert('An error occurred during WhatsApp backup share.');
     } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;

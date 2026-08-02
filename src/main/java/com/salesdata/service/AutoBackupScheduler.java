@@ -33,12 +33,21 @@ public class AutoBackupScheduler implements SchedulingConfigurer {
     @Autowired
     private GoogleDriveService googleDriveService;
 
+    @Autowired(required = false)
+    private WhatsAppService whatsAppService;
+
     private ScheduledTaskRegistrar taskRegistrar;
     private ScheduledFuture<?> scheduledFuture;
+    private ScheduledFuture<?> scheduledWaFuture;
     private Long nextBackupTime = null;
+    private Long nextWaBackupTime = null;
 
     public Long getNextBackupTime() {
         return nextBackupTime;
+    }
+
+    public Long getNextWaBackupTime() {
+        return nextWaBackupTime;
     }
 
     @Override
@@ -53,33 +62,59 @@ public class AutoBackupScheduler implements SchedulingConfigurer {
         if (scheduledFuture != null) {
             scheduledFuture.cancel(false);
         }
+        if (scheduledWaFuture != null) {
+            scheduledWaFuture.cancel(false);
+        }
         nextBackupTime = null;
+        nextWaBackupTime = null;
 
+        // 1. Google Drive Auto-Backup
         boolean enabled = "true".equalsIgnoreCase(getSetting("autoBackupEnabled", "false"));
         if (!enabled) {
             logger.info("Auto Backup to Google Drive is DISABLED.");
-            return;
+        } else {
+            int frequencyPerDay;
+            try {
+                frequencyPerDay = Integer.parseInt(getSetting("autoBackupFrequency", "2"));
+            } catch (NumberFormatException e) {
+                frequencyPerDay = 2;
+            }
+            if (frequencyPerDay <= 0) frequencyPerDay = 1;
+            long intervalMs = (24 * 60 * 60 * 1000L) / frequencyPerDay;
+            logger.info("Auto Backup to Google Drive is ENABLED. Frequency: " + frequencyPerDay + " times/day.");
+            
+            long startTime = System.currentTimeMillis() + intervalMs;
+            nextBackupTime = startTime;
+
+            scheduledFuture = taskRegistrar.getScheduler().scheduleWithFixedDelay(() -> {
+                performBackup();
+                nextBackupTime = System.currentTimeMillis() + intervalMs;
+            }, new Date(startTime), intervalMs);
         }
 
-        int frequencyPerDay;
-        try {
-            frequencyPerDay = Integer.parseInt(getSetting("autoBackupFrequency", "2"));
-        } catch (NumberFormatException e) {
-            frequencyPerDay = 2;
+        // 2. WhatsApp Auto-Backup
+        boolean waEnabled = "true".equalsIgnoreCase(getSetting("waAutoBackupEnabled", "false"));
+        if (!waEnabled) {
+            logger.info("Auto Backup to WhatsApp is DISABLED.");
+        } else {
+            int waFreq;
+            try {
+                waFreq = Integer.parseInt(getSetting("waAutoBackupFrequency", "2"));
+            } catch (NumberFormatException e) {
+                waFreq = 2;
+            }
+            if (waFreq <= 0) waFreq = 1;
+            long waIntervalMs = (24 * 60 * 60 * 1000L) / waFreq;
+            logger.info("Auto Backup to WhatsApp is ENABLED. Frequency: " + waFreq + " times/day.");
+            
+            long waStartTime = System.currentTimeMillis() + waIntervalMs;
+            nextWaBackupTime = waStartTime;
+
+            scheduledWaFuture = taskRegistrar.getScheduler().scheduleWithFixedDelay(() -> {
+                performWaBackup();
+                nextWaBackupTime = System.currentTimeMillis() + waIntervalMs;
+            }, new Date(waStartTime), waIntervalMs);
         }
-
-        if (frequencyPerDay <= 0) frequencyPerDay = 1;
-
-        long intervalMs = (24 * 60 * 60 * 1000L) / frequencyPerDay;
-        logger.info("Auto Backup to Google Drive is ENABLED. Frequency: " + frequencyPerDay + " times/day (Every " + (intervalMs / 3600000) + " hours).");
-        
-        long startTime = System.currentTimeMillis() + intervalMs;
-        nextBackupTime = startTime;
-
-        scheduledFuture = taskRegistrar.getScheduler().scheduleWithFixedDelay(() -> {
-            performBackup();
-            nextBackupTime = System.currentTimeMillis() + intervalMs;
-        }, new Date(startTime), intervalMs); // Start after first interval
     }
 
     private void performBackup() {
@@ -98,6 +133,37 @@ public class AutoBackupScheduler implements SchedulingConfigurer {
             }
         } catch (Exception e) {
             logger.severe("Scheduled backup failed: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void performWaBackup() {
+        logger.info("Starting scheduled Auto Backup to WhatsApp...");
+        try {
+            String jsonContent = systemController.generateBackupJsonString();
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String fileName = "backup_sales_" + timestamp + ".json";
+            String waNumber = getSetting("waBackupNumber", "").trim();
+            if (waNumber.isEmpty()) {
+                logger.warning("Scheduled WA backup failed: WhatsApp Backup Number is not configured.");
+                return;
+            }
+            if (whatsAppService == null) {
+                logger.warning("Scheduled WA backup failed: WhatsAppService not available.");
+                return;
+            }
+            String cleanNumber = waNumber.replaceAll("[^0-9]", "");
+            if (cleanNumber.length() == 10) {
+                cleanNumber = "91" + cleanNumber;
+            } else if (cleanNumber.startsWith("0") && cleanNumber.length() == 11) {
+                cleanNumber = "91" + cleanNumber.substring(1);
+            }
+            String base64 = java.util.Base64.getEncoder().encodeToString(jsonContent.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            String caption = "📦 *Sales Data Entry - Auto Backup*\nDate: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss")) + "\nFile: " + fileName;
+            java.util.Map<String, Object> result = whatsAppService.sendBackupDocument(cleanNumber, base64, fileName, caption);
+            logger.info("Scheduled WA backup completed. Result: " + result);
+        } catch (Exception e) {
+            logger.severe("Scheduled WA backup failed: " + e.getMessage());
             e.printStackTrace();
         }
     }

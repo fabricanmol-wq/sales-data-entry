@@ -43,6 +43,9 @@ public class SettingController {
         map.put("printPaperSize", "A4");
         map.put("printShowTax", "YES");
         map.put("reminderIntervalMonths", "1");
+        map.put("waAutoBackupEnabled", "false");
+        map.put("waAutoBackupFrequency", "2");
+        map.put("waBackupNumber", "");
 
         // Override with DB values
         for (Setting s : settings) {
@@ -74,8 +77,10 @@ public class SettingController {
     @GetMapping("/next-backup")
     public ResponseEntity<Map<String, Long>> getNextBackupTime() {
         Long nextTime = autoBackupScheduler != null ? autoBackupScheduler.getNextBackupTime() : null;
+        Long nextWaTime = autoBackupScheduler != null ? autoBackupScheduler.getNextWaBackupTime() : null;
         Map<String, Long> response = new HashMap<>();
         response.put("nextBackupTime", nextTime);
+        response.put("nextWaBackupTime", nextWaTime);
         return ResponseEntity.ok(response);
     }
 }

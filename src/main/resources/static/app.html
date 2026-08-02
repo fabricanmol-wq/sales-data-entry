@@ -849,9 +849,52 @@
                                         </div>
                                     </form>
                                 </div>
-                            </div>
                         </div>
                         
+                        <!-- WhatsApp Auto-Backup -->
+                        <div class="col-md-12 mt-4">
+                            <div class="card border-success">
+                                <div class="card-header bg-success text-white"><i class="bi bi-whatsapp me-2"></i>WhatsApp Auto-Backup</div>
+                                <div class="card-body">
+                                    <form id="waAutoBackupForm">
+                                        <div class="row g-3">
+                                            <div class="col-md-3">
+                                                <label class="form-label">Auto Backup Status</label>
+                                                <select class="form-select" name="waAutoBackupEnabled" id="setting_waAutoBackupEnabled">
+                                                    <option value="false">Disabled</option>
+                                                    <option value="true">Enabled</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Backup Frequency</label>
+                                                <select class="form-select" name="waAutoBackupFrequency" id="setting_waAutoBackupFrequency">
+                                                    <option value="2">2 Times a Day (Every 12 hrs)</option>
+                                                    <option value="4">4 Times a Day (Every 6 hrs)</option>
+                                                    <option value="6">6 Times a Day (Every 4 hrs)</option>
+                                                    <option value="8">8 Times a Day (Every 3 hrs)</option>
+                                                    <option value="10">10 Times a Day (Every 2.4 hrs)</option>
+                                                    <option value="12">12 Times a Day (Every 2 hrs)</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-5">
+                                                <label class="form-label">WhatsApp Number (with Country Code)</label>
+                                                <input type="text" class="form-control" name="waBackupNumber" id="setting_waBackupNumber" placeholder="e.g. 916284198290">
+                                            </div>
+                                            <div class="col-12 d-flex justify-content-between align-items-center mt-3">
+                                                <div id="waCountdownContainer" class="text-muted" style="display: none;">
+                                                    <strong>Next WA Backup In:</strong> <span id="waCountdownTimer">--:--:--</span>
+                                                </div>
+                                                <div>
+                                                    <button type="button" id="instantWaBackupBtn" class="btn btn-outline-success me-2"><i class="bi bi-whatsapp me-1"></i> Instant Backup Share on Whatsapp</button>
+                                                    <button type="submit" class="btn btn-success"><i class="bi bi-save me-1"></i> Save Whatsapp Backup Setting</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Roles and Permissions Matrix -->
                         <div class="col-md-12 mt-4" id="rolesMatrixCard">
                             <div class="card">

@@ -50,9 +50,11 @@ public class SystemController {
     @Autowired
     private com.salesdata.service.GoogleDriveService googleDriveService;
 
+    @Autowired(required = false)
+    private com.salesdata.service.WhatsAppService whatsAppService;
+
     @Autowired
     private ObjectMapper mapper;
-
     @GetMapping("/backup")
     @PreAuthorize("@customPermissionEvaluator.hasAccess(authentication, 'Settings', 'CREATE')")
     public ResponseEntity<Resource> backupDatabase() {
@@ -99,6 +101,44 @@ public class SystemController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body("{\"message\": \"Error creating backup: " + e.getMessage().replaceAll("\"", "'") + "\"}");
+        }
+    }
+
+    @PostMapping("/backup-to-wa")
+    @PreAuthorize("@customPermissionEvaluator.hasAccess(authentication, 'Settings', 'CREATE')")
+    public ResponseEntity<?> instantBackupToWhatsApp() {
+        try {
+            Optional<com.salesdata.entity.Setting> numberOpt = settingRepository.findById("waBackupNumber");
+            String waNumber = numberOpt.map(com.salesdata.entity.Setting::getValue).orElse("").trim();
+            
+            if (waNumber.isEmpty()) {
+                return ResponseEntity.badRequest().body("{\"message\": \"WhatsApp Backup Number is not configured. Please enter a valid WhatsApp Number in settings.\"}");
+            }
+
+            String cleanNumber = waNumber.replaceAll("[^0-9]", "");
+            if (cleanNumber.length() == 10) {
+                cleanNumber = "91" + cleanNumber;
+            } else if (cleanNumber.startsWith("0") && cleanNumber.length() == 11) {
+                cleanNumber = "91" + cleanNumber.substring(1);
+            }
+
+            String jsonString = generateBackupJsonString();
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String filename = "backup_sales_" + timestamp + ".json";
+            
+            String base64 = java.util.Base64.getEncoder().encodeToString(jsonString.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            String caption = "📦 *Sales Data Entry - Instant WhatsApp Backup*\nDate: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss")) + "\nFile: " + filename;
+            
+            Map<String, Object> result = whatsAppService != null ? whatsAppService.sendBackupDocument(cleanNumber, base64, filename, caption) : null;
+            if (result != null && !"error".equalsIgnoreCase((String) result.get("status"))) {
+                return ResponseEntity.ok("{\"message\": \"Database backup sent successfully to WhatsApp (" + cleanNumber + ").\"}");
+            } else {
+                String errMsg = result != null && result.get("message") != null ? (String) result.get("message") : "WhatsApp send document failed";
+                return ResponseEntity.internalServerError().body("{\"message\": \"Failed to send backup to WhatsApp: " + errMsg.replaceAll("\"", "'") + "\"}");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("{\"message\": \"Error sending backup to WhatsApp: " + e.getMessage().replaceAll("\"", "'") + "\"}");
         }
     }
 
