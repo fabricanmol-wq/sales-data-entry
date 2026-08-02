@@ -71,10 +71,17 @@ public class WhatsAppService {
     public Map<String, Object> getStatus() {
         try {
             resolveSessionUuid();
-            String url = openwaUrl + "/api/sessions/" + sessionUuid + "/status";
+            String url = openwaUrl + "/api/sessions/" + sessionUuid;
             HttpEntity<String> entity = new HttpEntity<>(getHeaders());
             ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
-            return response.getBody();
+            Map<String, Object> result = new HashMap<>();
+            String state = (String) response.getBody().get("status");
+            if ("connected".equalsIgnoreCase(state) || "ready".equalsIgnoreCase(state) || "WORKING".equalsIgnoreCase(state)) {
+                result.put("status", "CONNECTED");
+            } else {
+                result.put("status", "DISCONNECTED");
+            }
+            return result;
         } catch (Exception e) {
             logger.error("Failed to get WhatsApp status: ", e);
             Map<String, Object> error = new HashMap<>();
@@ -97,12 +104,12 @@ public class WhatsAppService {
             }
             
             // Check status to see if connected, or if we need QR
-            String statusUrl = openwaUrl + "/api/sessions/" + sessionUuid + "/status";
+            String statusUrl = openwaUrl + "/api/sessions/" + sessionUuid;
             ResponseEntity<Map> statusRes = restTemplate.exchange(statusUrl, HttpMethod.GET, entity, Map.class);
             String state = (String) statusRes.getBody().get("status");
 
             Map<String, Object> result = new HashMap<>();
-            if ("connected".equalsIgnoreCase(state)) {
+            if ("connected".equalsIgnoreCase(state) || "ready".equalsIgnoreCase(state) || "WORKING".equalsIgnoreCase(state)) {
                 result.put("status", "connected");
             } else {
                 // Fetch QR code
