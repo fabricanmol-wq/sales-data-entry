@@ -3489,6 +3489,29 @@ async function savePermissionsMatrix() {
         console.error(e);
     }
 }
+
+document.getElementById('siteOptimizeBtn')?.addEventListener('click', async (e) => {
+    const btn = e.target;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Optimizing...';
+    btn.disabled = true;
+    try {
+        const res = await fetch('/api/system/optimize', { method: 'POST' });
+        if(res.ok) {
+            const data = await res.json();
+            alert(data.message);
+        } else {
+            alert('Optimization encountered an issue.');
+        }
+    } catch(e) {
+        console.error(e);
+        alert('Optimization failed to connect.');
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }
+});
+
 document.getElementById('clearLogsBtn')?.addEventListener('click', async () => {
     if(!confirm("Are you sure you want to clear ALL error logs? This cannot be undone.")) return;
     try {
