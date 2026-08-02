@@ -50,6 +50,14 @@ public class SalesRecordController {
         return ResponseEntity.ok(records);
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("@customPermissionEvaluator.hasAccess(authentication, 'Sales Entries', 'VIEW')")
+    public ResponseEntity<SalesRecord> getRecord(@PathVariable Long id) {
+        return salesRecordRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @PostMapping
     @PreAuthorize("@customPermissionEvaluator.hasAccess(authentication, 'Sales Entries', 'CREATE')")
     public ResponseEntity<SalesRecord> createRecord(@RequestBody SalesRecord salesRecord, Authentication auth) {

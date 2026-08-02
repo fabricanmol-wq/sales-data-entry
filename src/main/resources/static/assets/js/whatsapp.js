@@ -242,7 +242,7 @@ async function processSendWa(data) {
         msg += `⚠️ *Credit Pending:* ${appSettings.currencySymbol}${formatCurrency(data.creditAmount)}\n`;
     }
 
-    msg += `\nFor any queries, please contact us.\n\nRegards,\nSales Data Entry`;
+    msg += `\nFor any queries, please contact us.\n\nRegards,\n${appSettings.companyName || 'Anmol Fabrics'}`;
 
     try {
         // Populate Invoice HTML silently
@@ -258,7 +258,13 @@ async function processSendWa(data) {
             jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
         };
         
-        const pdfBase64 = await html2pdf().set(opt).from(printArea).output('datauristring');
+        document.body.classList.add('printing-invoice');
+        let pdfBase64;
+        try {
+            pdfBase64 = await html2pdf().set(opt).from(printArea).output('datauristring');
+        } finally {
+            document.body.classList.remove('printing-invoice');
+        }
 
         const res = await fetch('/api/whatsapp/send-file', {
             method: 'POST',
