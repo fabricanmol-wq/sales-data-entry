@@ -340,7 +340,19 @@ public class SystemController {
                 for (Map<String, Object> row : rows) {
                     Object[] params = new Object[columns.size()];
                     for (int i = 0; i < columns.size(); i++) {
-                        params[i] = row.get(columns.get(i));
+                        Object val = row.get(columns.get(i));
+                        
+                        // Fix date formats for SQLite which fails on ISO-8601 format
+                        if (!isPostgres && val instanceof String) {
+                            String strVal = (String) val;
+                            if (strVal.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}(Z|[+-]\\d{2}:\\d{2})$")) {
+                                val = strVal.substring(0, 10) + " " + strVal.substring(11, 23);
+                            } else if (strVal.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(Z|[+-]\\d{2}:\\d{2})$")) {
+                                val = strVal.substring(0, 10) + " " + strVal.substring(11, 19) + ".000";
+                            }
+                        }
+                        
+                        params[i] = val;
                     }
                     batchArgs.add(params);
                 }
