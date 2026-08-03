@@ -407,13 +407,7 @@ public class SystemController {
                 return ResponseEntity.status(403).body("Only developers can perform a factory reset.");
             }
 
-            boolean isPostgres = false;
-            try (Connection conn = jdbcTemplate.getDataSource().getConnection()) {
-                String url = conn.getMetaData().getURL();
-                if (url != null && url.startsWith("jdbc:postgresql")) {
-                    isPostgres = true;
-                }
-            }
+            final boolean[] isPostgresArr = new boolean[1];
 
             List<String> existingTables = jdbcTemplate.execute(new org.springframework.jdbc.core.ConnectionCallback<List<String>>() {
                 @Override
@@ -421,7 +415,8 @@ public class SystemController {
                     List<String> tables = new java.util.ArrayList<>();
                     DatabaseMetaData metaData = conn.getMetaData();
                     String driver = metaData.getDriverName().toLowerCase();
-                    String schema = driver.contains("postgresql") ? "public" : null;
+                    isPostgresArr[0] = driver.contains("postgresql");
+                    String schema = isPostgresArr[0] ? "public" : null;
                     try (ResultSet rs = metaData.getTables(null, schema, "%", new String[]{"TABLE"})) {
                         while (rs.next()) {
                             tables.add(rs.getString("TABLE_NAME").toLowerCase());
@@ -430,6 +425,8 @@ public class SystemController {
                     return tables;
                 }
             });
+
+            boolean isPostgres = isPostgresArr[0];
 
             if (isPostgres) {
                 if (!existingTables.isEmpty()) {
