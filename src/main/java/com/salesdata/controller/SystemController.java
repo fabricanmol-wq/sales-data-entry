@@ -267,6 +267,31 @@ public class SystemController {
             }
         }
             
+        // Get list of actual existing tables in the database to prevent restoring missing tables
+        List<String> existingTables = jdbcTemplate.execute(new org.springframework.jdbc.core.ConnectionCallback<List<String>>() {
+            @Override
+            public List<String> doInConnection(Connection conn) throws java.sql.SQLException, org.springframework.dao.DataAccessException {
+                List<String> tables = new java.util.ArrayList<>();
+                DatabaseMetaData metaData = conn.getMetaData();
+                String driver = metaData.getDriverName().toLowerCase();
+                String schema = driver.contains("postgresql") ? "public" : null;
+                try (ResultSet rs = metaData.getTables(null, schema, "%", new String[]{"TABLE"})) {
+                    while (rs.next()) {
+                        tables.add(rs.getString("TABLE_NAME").toLowerCase());
+                    }
+                }
+                return tables;
+            }
+        });
+        
+        List<String> tablesToRestoreFinal = new java.util.ArrayList<>();
+        for (String tbl : tablesToRestore) {
+            if (existingTables.contains(tbl.toLowerCase())) {
+                tablesToRestoreFinal.add(tbl);
+            }
+        }
+        tablesToRestore = tablesToRestoreFinal;
+            
         // Disable foreign key checks or clear data
         if (isPostgres) {
             // In Postgres, we can't disable triggers without superuser.
