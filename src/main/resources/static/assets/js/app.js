@@ -4012,3 +4012,38 @@ async function updateSupportTicketBadge() {
         }
     } catch (e) {}
 }
+
+// ==================== FACTORY RESET ====================
+function factoryReset() {
+    const confirmation = prompt("DANGER: This will delete ALL data in the database and reset the system to 0! Type 'RESET' to confirm:");
+    if (confirmation === 'RESET') {
+        const btn = event.target || document.activeElement;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Resetting...';
+        btn.disabled = true;
+
+        fetch('/api/system/factory-reset', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        })
+        .then(response => {
+            if (response.ok) {
+                alert("System has been Factory Reset successfully. You will now be logged out.");
+                logout(); // logs out and redirects to login
+            } else {
+                response.text().then(text => {
+                    alert("Error: " + text);
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                });
+            }
+        })
+        .catch(err => {
+            alert("Error: " + err);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+    } else if (confirmation !== null) {
+        alert("Factory reset cancelled. You did not type 'RESET'.");
+    }
+}

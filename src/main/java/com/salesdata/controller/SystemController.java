@@ -56,6 +56,12 @@ public class SystemController {
 
     @Autowired
     private ObjectMapper mapper;
+
+    @Autowired
+    private com.salesdata.repository.UserRepository userRepository;
+
+    @Autowired
+    private com.salesdata.config.DataSeeder dataSeeder;
     @GetMapping("/backup")
     @PreAuthorize("@customPermissionEvaluator.hasAccess(authentication, 'Settings', 'CREATE')")
     public ResponseEntity<Resource> backupDatabase() {
@@ -388,6 +394,69 @@ public class SystemController {
             return ResponseEntity.ok("{\"message\": \"Site optimized successfully! Memory and caches cleared.\"}");
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("{\"message\": \"Optimization failed: " + e.getMessage().replaceAll("\"", "'") + "\"}");
+        }
+    }
+
+    @PostMapping("/factory-reset")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public ResponseEntity<String> factoryReset(@org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        try {
+            com.salesdata.entity.User currentUser = userRepository.findByUsername(userDetails.getUsername()).orElse(null);
+            if (currentUser == null || !currentUser.isDeveloper()) {
+                return ResponseEntity.status(403).body("Only developers can perform a factory reset.");
+            }
+
+            boolean isPostgres = false;
+            try (Connection conn = jdbcTemplate.getDataSource().getConnection()) {
+                String url = conn.getMetaData().getURL();
+                if (url != null && url.startsWith("jdbc:postgresql")) {
+                    isPostgres = true;
+                }
+            }
+
+            List<String> existingTables = jdbcTemplate.execute(new org.springframework.jdbc.core.ConnectionCallback<List<String>>() {
+                @Override
+                public List<String> doInConnection(Connection conn) throws java.sql.SQLException, org.springframework.dao.DataAccessException {
+                    List<String> tables = new java.util.ArrayList<>();
+                    DatabaseMetaData metaData = conn.getMetaData();
+                    String driver = metaData.getDriverName().toLowerCase();
+                    String schema = driver.contains("postgresql") ? "public" : null;
+                    try (ResultSet rs = metaData.getTables(null, schema, "%", new String[]{"TABLE"})) {
+                        while (rs.next()) {
+                            tables.add(rs.getString("TABLE_NAME").toLowerCase());
+                        }
+                    }
+                    return tables;
+                }
+            });
+
+            if (isPostgres) {
+                if (!existingTables.isEmpty()) {
+                    String truncateSql = "TRUNCATE TABLE " + 
+                        existingTables.stream().map(t -> "\"" + t + "\"").collect(java.util.stream.Collectors.joining(", ")) + 
+                        " CASCADE";
+                    jdbcTemplate.execute(truncateSql);
+                }
+            } else {
+                jdbcTemplate.execute("PRAGMA foreign_keys = OFF;");
+                for (String tableName : existingTables) {
+                    if (tableName.equalsIgnoreCase("sqlite_sequence")) {
+                        jdbcTemplate.execute("DELETE FROM sqlite_sequence");
+                    } else {
+                        jdbcTemplate.execute("DELETE FROM \"" + tableName + "\"");
+                    }
+                }
+                jdbcTemplate.execute("PRAGMA foreign_keys = ON;");
+            }
+
+            // Re-seed the default data
+            dataSeeder.run();
+
+            return ResponseEntity.ok("Factory reset successful.");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Error during factory reset: " + e.getMessage());
         }
     }
 }
