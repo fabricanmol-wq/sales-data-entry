@@ -146,18 +146,22 @@ public class SystemController {
     public String generateBackupJsonString() throws Exception {
         Map<String, List<Map<String, Object>>> backupData = new HashMap<>();
         List<String> tableNames = new java.util.ArrayList<>();
-        try (Connection conn = dataSource.getConnection()) {
-            DatabaseMetaData metaData = conn.getMetaData();
-            String driver = metaData.getDriverName().toLowerCase();
-            String schema = driver.contains("postgresql") ? "public" : null;
-            try (ResultSet rs = metaData.getTables(null, schema, "%", new String[]{"TABLE"})) {
-                while (rs.next()) {
-                    String tableName = rs.getString("TABLE_NAME");
-                    if (tableName.startsWith("sqlite_") || tableName.startsWith("pg_")) continue;
-                    tableNames.add(tableName);
+        jdbcTemplate.execute(new org.springframework.jdbc.core.ConnectionCallback<Void>() {
+            @Override
+            public Void doInConnection(Connection conn) throws java.sql.SQLException, org.springframework.dao.DataAccessException {
+                DatabaseMetaData metaData = conn.getMetaData();
+                String driver = metaData.getDriverName().toLowerCase();
+                String schema = driver.contains("postgresql") ? "public" : null;
+                try (ResultSet rs = metaData.getTables(null, schema, "%", new String[]{"TABLE"})) {
+                    while (rs.next()) {
+                        String tableName = rs.getString("TABLE_NAME");
+                        if (tableName.startsWith("sqlite_") || tableName.startsWith("pg_")) continue;
+                        tableNames.add(tableName);
+                    }
                 }
+                return null;
             }
-        }
+        });
 
         for (String tableName : tableNames) {
             List<Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT * FROM \"" + tableName + "\"");
@@ -218,12 +222,12 @@ public class SystemController {
     }
 
     public void restoreDatabaseFromMap(Map<String, List<Map<String, Object>>> backupData) throws Exception {
-        boolean isPostgres = false;
-        try (Connection conn = dataSource.getConnection()) {
-            DatabaseMetaData metaData = conn.getMetaData();
-            String driver = metaData.getDriverName().toLowerCase();
-            isPostgres = driver.contains("postgresql");
-        }
+        boolean isPostgres = Boolean.TRUE.equals(jdbcTemplate.execute(new org.springframework.jdbc.core.ConnectionCallback<Boolean>() {
+            @Override
+            public Boolean doInConnection(Connection conn) throws java.sql.SQLException, org.springframework.dao.DataAccessException {
+                return conn.getMetaData().getDriverName().toLowerCase().contains("postgresql");
+            }
+        }));
 
         // SQLite preserves case in table names, Postgres defaults to lowercase.
         // If restoring from SQLite to Postgres, convert all table names AND column names to lowercase.
