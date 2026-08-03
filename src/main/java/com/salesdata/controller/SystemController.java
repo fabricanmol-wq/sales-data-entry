@@ -349,6 +349,8 @@ public class SystemController {
                                 val = strVal.substring(0, 10) + " " + strVal.substring(11, 23);
                             } else if (strVal.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(Z|[+-]\\d{2}:\\d{2})$")) {
                                 val = strVal.substring(0, 10) + " " + strVal.substring(11, 19) + ".000";
+                            } else if (strVal.matches("^\\d{4}-\\d{2}-\\d{2}$")) {
+                                val = strVal + " 00:00:00.000";
                             }
                         }
                         
