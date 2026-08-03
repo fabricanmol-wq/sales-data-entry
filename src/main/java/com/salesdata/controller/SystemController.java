@@ -285,25 +285,35 @@ public class SystemController {
                     
                 if (rows == null || rows.isEmpty()) continue;
                     
-                // Insert rows
-                for (Map<String, Object> row : rows) {
-                    StringBuilder sql = new StringBuilder("INSERT INTO \"").append(tableName).append("\" (");
-                    StringBuilder values = new StringBuilder(" VALUES (");
-                    Object[] params = new Object[row.size()];
-                    int i = 0;
-                    for (Map.Entry<String, Object> col : row.entrySet()) {
-                        sql.append("\"").append(col.getKey()).append("\"");
-                        values.append("?");
-                        params[i++] = col.getValue();
-                        if (i < row.size()) {
-                            sql.append(", ");
-                            values.append(", ");
-                        }
+                // Insert rows using batchUpdate for massive performance improvement
+                Map<String, Object> firstRow = rows.get(0);
+                List<String> columns = new java.util.ArrayList<>(firstRow.keySet());
+                
+                StringBuilder sql = new StringBuilder("INSERT INTO \"").append(tableName).append("\" (");
+                StringBuilder values = new StringBuilder(" VALUES (");
+                for (int i = 0; i < columns.size(); i++) {
+                    sql.append("\"").append(columns.get(i)).append("\"");
+                    values.append("?");
+                    if (i < columns.size() - 1) {
+                        sql.append(", ");
+                        values.append(", ");
                     }
-                    sql.append(")");
-                    values.append(")");
-                    jdbcTemplate.update(sql.toString() + values.toString(), params);
                 }
+                sql.append(")");
+                values.append(")");
+                
+                String insertSql = sql.toString() + values.toString();
+                
+                List<Object[]> batchArgs = new java.util.ArrayList<>();
+                for (Map<String, Object> row : rows) {
+                    Object[] params = new Object[columns.size()];
+                    for (int i = 0; i < columns.size(); i++) {
+                        params[i] = row.get(columns.get(i));
+                    }
+                    batchArgs.add(params);
+                }
+                
+                jdbcTemplate.batchUpdate(insertSql, batchArgs);
             }
                 
             // Reset sequences for PostgreSQL
