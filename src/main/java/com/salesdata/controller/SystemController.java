@@ -11,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import com.salesdata.service.GoogleDriveService;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.io.IOException;
@@ -168,6 +169,7 @@ public class SystemController {
 
     @PostMapping("/restore")
     @PreAuthorize("@customPermissionEvaluator.hasAccess(authentication, 'Settings', 'EDIT')")
+    @Transactional
     public ResponseEntity<?> restoreDatabase(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty() || !file.getOriginalFilename().endsWith(".json")) {
             return ResponseEntity.badRequest().body("{\"message\": \"Invalid file. Please upload a valid JSON backup.\"}");
@@ -189,6 +191,7 @@ public class SystemController {
 
     @PostMapping("/restore-from-drive")
     @PreAuthorize("@customPermissionEvaluator.hasAccess(authentication, 'Settings', 'EDIT')")
+    @Transactional
     public ResponseEntity<?> restoreFromGoogleDrive() {
         try {
             Optional<com.salesdata.entity.Setting> folderIdOpt = settingRepository.findById("gdriveFolderId");
