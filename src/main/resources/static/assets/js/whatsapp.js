@@ -18,7 +18,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // Listeners for Modal Buttons
     const btnWaRefreshQr = document.getElementById('btnWaRefreshQr');
     if (btnWaRefreshQr) {
-        btnWaRefreshQr.addEventListener('click', () => {
+        btnWaRefreshQr.addEventListener('click', async () => {
+            const originalText = btnWaRefreshQr.innerHTML;
+            btnWaRefreshQr.innerHTML = '<i class="spinner-border spinner-border-sm me-2"></i>Refreshing...';
+            btnWaRefreshQr.disabled = true;
+            try {
+                // Force logout the old stuck session first to get a completely new QR
+                if (typeof connectionPollInterval !== 'undefined' && connectionPollInterval) clearInterval(connectionPollInterval);
+                await fetch('/api/whatsapp/logout', { method: 'POST' });
+                // Wait briefly for the server to process the stop
+                await new Promise(r => setTimeout(r, 1000));
+            } catch (e) {
+                console.error("Logout before refresh failed:", e);
+            }
+            btnWaRefreshQr.innerHTML = originalText;
+            btnWaRefreshQr.disabled = false;
             connectWa();
         });
     }

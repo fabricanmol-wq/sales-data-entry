@@ -214,8 +214,8 @@ public class WhatsAppService {
         }
     }
 
-    // Ping every 14 minutes (14 * 60 * 1000 = 840000 ms) to keep the Render server active
-    @Scheduled(fixedRate = 840000)
+    // Ping every 10 minutes (10 * 60 * 1000 = 600000 ms) to keep the Render server active
+    @Scheduled(fixedRate = 600000)
     public void pingOpenWAServer() {
         try {
             logger.info("Pinging OpenWA Server to keep it active...");
