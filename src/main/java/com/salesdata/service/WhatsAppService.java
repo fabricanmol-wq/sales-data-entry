@@ -110,7 +110,7 @@ public class WhatsAppService {
 
             Map<String, Object> result = new HashMap<>();
             if ("connected".equalsIgnoreCase(state) || "ready".equalsIgnoreCase(state) || "WORKING".equalsIgnoreCase(state)) {
-                result.put("status", "connected");
+                result.put("status", "CONNECTED");
             } else {
                 // Fetch QR code
                 String qrUrl = openwaUrl + "/api/sessions/" + sessionUuid + "/qr";
@@ -138,6 +138,13 @@ public class WhatsAppService {
             String url = openwaUrl + "/api/sessions/" + sessionUuid + "/logout";
             HttpEntity<String> entity = new HttpEntity<>(getHeaders());
             ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, entity, Map.class);
+            
+            // Also call stop to completely halt the engine and clear memory
+            try {
+                String stopUrl = openwaUrl + "/api/sessions/" + sessionUuid + "/stop";
+                restTemplate.exchange(stopUrl, HttpMethod.POST, entity, Map.class);
+            } catch (Exception ignored) {}
+            
             return response.getBody();
         } catch (Exception e) {
             logger.error("Failed to logout WhatsApp: ", e);

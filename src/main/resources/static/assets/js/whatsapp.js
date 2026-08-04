@@ -129,7 +129,7 @@ async function connectWa() {
         const data = await res.json();
         
         if (data) {
-            if (data.status === 'connected') {
+            if (data.status && data.status.toUpperCase() === 'CONNECTED') {
                 showWaConnected();
                 const modal = bootstrap.Modal.getInstance(document.getElementById('whatsappModal'));
                 if (modal) modal.hide();
@@ -166,7 +166,7 @@ function pollForConnection() {
             const res = await fetch('/api/whatsapp/status');
             const data = await res.json();
             
-            if (data.status === 'connected') {
+            if (data.status && data.status.toUpperCase() === 'CONNECTED') {
                 clearInterval(connectionPollInterval);
                 showWaConnected();
                 const modal = bootstrap.Modal.getInstance(document.getElementById('whatsappModal'));
@@ -181,10 +181,20 @@ function pollForConnection() {
 
 async function disconnectWa() {
     try {
-        if (connectionPollInterval) clearInterval(connectionPollInterval);
+        if (typeof connectionPollInterval !== 'undefined' && connectionPollInterval) clearInterval(connectionPollInterval);
+        
+        // Optimistically update UI
+        showWaDisconnected();
+        const badge = document.getElementById('waStatusBadge');
+        if (badge) {
+            badge.textContent = 'Not Connected';
+            badge.className = 'badge bg-danger ms-1';
+        }
+        
         const res = await fetch('/api/whatsapp/logout', { method: 'POST' });
         showNotification("WhatsApp disconnected");
-        checkWaStatus();
+        
+        setTimeout(checkWaStatus, 1500); // verify after delay
     } catch (e) {
         console.error("WA Disconnect Error:", e);
     }
