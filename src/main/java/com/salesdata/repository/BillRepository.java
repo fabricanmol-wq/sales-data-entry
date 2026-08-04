@@ -11,5 +11,6 @@ import com.salesdata.entity.Customer;
 public interface BillRepository extends JpaRepository<Bill, Long> {
     List<Bill> findByCustomerAndIsDeletedFalse(Customer customer);
     List<Bill> findByIsDeletedFalse();
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"customer", "salesman"})
     List<Bill> findByIsDeletedFalse(org.springframework.data.domain.Sort sort);
 }

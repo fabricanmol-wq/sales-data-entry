@@ -134,10 +134,6 @@ async function connectWa() {
                 const modal = bootstrap.Modal.getInstance(document.getElementById('whatsappModal'));
                 if (modal) modal.hide();
                 return;
-            } else if (data.status === 'waiting_for_qr') {
-                // Poll again in 2 seconds
-                setTimeout(connectWa, 2000);
-                return;
             } else if (data.qrUrl) {
                 if (qrImg) {
                     qrImg.src = data.qrUrl; // QR URL or Base64
@@ -147,8 +143,12 @@ async function connectWa() {
                     };
                 }
                 
-        // Poll for connection status while QR is shown
+                // Poll for connection status while QR is shown
                 pollForConnection();
+            } else {
+                // If it's waiting_for_qr, error, or still booting up
+                setTimeout(connectWa, 1500);
+                return;
             }
         }
     } catch (e) {
@@ -176,7 +176,7 @@ function pollForConnection() {
         } catch (e) {
             console.error("Poll Error:", e);
         }
-    }, 3000); // Check every 3 seconds
+    }, 1500); // Check every 3 seconds
 }
 
 async function disconnectWa() {

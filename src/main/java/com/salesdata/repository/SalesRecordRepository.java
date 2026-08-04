@@ -15,6 +15,7 @@ import com.salesdata.entity.Customer;
 public interface SalesRecordRepository extends JpaRepository<SalesRecord, Long>, JpaSpecificationExecutor<SalesRecord> {
     Optional<SalesRecord> findFirstByCustomerAndIsDeletedFalseOrderByEntryDateDesc(Customer customer);
     List<SalesRecord> findByCustomerAndIsDeletedFalseOrderByEntryDateAsc(Customer customer);
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"customer", "salesman"})
     List<SalesRecord> findByIsDeletedFalse();
     Optional<SalesRecord> findByRemarksAndIsDeletedFalse(String remarks);
     
