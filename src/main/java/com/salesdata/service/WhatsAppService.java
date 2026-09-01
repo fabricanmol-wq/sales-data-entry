@@ -63,6 +63,7 @@ public class WhatsAppService {
                 sessionUuid = (String) postResponse.getBody().get("id");
             }
         } catch (Exception e) {
+            checkAndClearSession(e);
             logger.error("Failed to resolve session UUID", e);
             throw new RuntimeException("Could not resolve Session UUID: " + e.getMessage(), e);
         }
@@ -83,6 +84,7 @@ public class WhatsAppService {
             }
             return result;
         } catch (Exception e) {
+            checkAndClearSession(e);
             logger.error("Failed to get WhatsApp status: ", e);
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
@@ -124,6 +126,7 @@ public class WhatsAppService {
             }
             return result;
         } catch (Exception e) {
+            checkAndClearSession(e);
             logger.error("Failed to start WhatsApp session: ", e);
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
@@ -147,6 +150,7 @@ public class WhatsAppService {
             
             return response.getBody();
         } catch (Exception e) {
+            checkAndClearSession(e);
             logger.error("Failed to logout WhatsApp: ", e);
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
@@ -167,6 +171,7 @@ public class WhatsAppService {
             ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, entity, Map.class);
             return response.getBody();
         } catch (Exception e) {
+            checkAndClearSession(e);
             logger.error("Failed to send WhatsApp message: ", e);
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
@@ -190,6 +195,7 @@ public class WhatsAppService {
             ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, entity, Map.class);
             return response.getBody();
         } catch (Exception e) {
+            checkAndClearSession(e);
             logger.error("Failed to send WhatsApp file: ", e);
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
@@ -213,6 +219,7 @@ public class WhatsAppService {
             ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, entity, Map.class);
             return response.getBody();
         } catch (Exception e) {
+            checkAndClearSession(e);
             logger.error("Failed to send WhatsApp backup document: ", e);
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
@@ -230,6 +237,13 @@ public class WhatsAppService {
             restTemplate.getForObject(url, String.class);
         } catch (Exception e) {
             logger.warn("OpenWA Ping failed (Server might be down or starting up): " + e.getMessage());
+        }
+    }
+
+    private void checkAndClearSession(Exception e) {
+        if (e != null && e.getMessage() != null && e.getMessage().contains("404")) {
+            logger.warn("WhatsApp API returned 404 Not Found. Clearing cached sessionUuid.");
+            sessionUuid = null;
         }
     }
 }
