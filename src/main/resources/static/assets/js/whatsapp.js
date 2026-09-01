@@ -332,7 +332,7 @@ async function processSendWa(data) {
             margin: 10,
             filename: `${(isPayment || isReturn) ? 'REC' : 'INV'}-${data.id}.pdf`,
             image: { type: 'jpeg', quality: 0.95 },
-            html2canvas: { scale: 1.5, useCORS: true, logging: false },
+            html2canvas: { scale: 1, useCORS: true, logging: false },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
@@ -357,10 +357,25 @@ async function processSendWa(data) {
         container.style.opacity = '0';
         container.style.pointerEvents = 'none';
         container.style.background = 'transparent';
-        container.innerHTML = htmlContent;
+        
+        // Parse HTML to avoid injecting <link> tags which cause html2canvas to hang
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlContent, "text/html");
+        
+        // Copy inline styles
+        const styles = doc.querySelectorAll('style');
+        styles.forEach(s => container.appendChild(s.cloneNode(true)));
+        
+        // Copy the target element
+        const targetElOriginal = doc.getElementById(targetId) || doc.body.firstElementChild;
+        if (targetElOriginal) {
+            container.appendChild(targetElOriginal.cloneNode(true));
+        }
+        
         document.body.appendChild(container);
 
-        await new Promise(resolve => setTimeout(resolve, 10));
+        // Yield for browser reflow
+        await new Promise(resolve => setTimeout(resolve, 100));
 
         try {
             const targetEl = container.querySelector('#' + targetId) || container.querySelector('div') || container.firstElementChild;
