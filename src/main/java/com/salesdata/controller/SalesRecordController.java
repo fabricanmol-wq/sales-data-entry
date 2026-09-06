@@ -204,8 +204,17 @@ public class SalesRecordController {
             paymentRecord.setBillType(isProductReturn ? "PRODUCT_RETURN" : "PAYMENT_RECEIVED");
         }
         
-        paymentRecord.setEntryDate(java.time.LocalDate.now());
-        paymentRecord.setReminderDate(java.time.LocalDate.now());
+        String entryDateStr = (String) payload.get("entryDate");
+        if (entryDateStr != null && !entryDateStr.trim().isEmpty()) {
+            try {
+                paymentRecord.setEntryDate(java.time.LocalDate.parse(entryDateStr));
+            } catch (Exception e) {
+                paymentRecord.setEntryDate(java.time.LocalDate.now());
+            }
+        } else {
+            paymentRecord.setEntryDate(java.time.LocalDate.now());
+        }
+        paymentRecord.setReminderDate(paymentRecord.getEntryDate());
         paymentRecord.setRemarks(remarks);
         paymentRecord.setCreatedBy(user);
 

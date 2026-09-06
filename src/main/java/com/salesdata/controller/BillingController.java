@@ -70,7 +70,16 @@ public class BillingController {
             });
 
         Bill bill = new Bill();
-        bill.setBillDate(LocalDateTime.now());
+        if (billDTO.getBillDate() != null && !billDTO.getBillDate().trim().isEmpty()) {
+            try {
+                java.time.LocalDate ld = java.time.LocalDate.parse(billDTO.getBillDate());
+                bill.setBillDate(ld.atStartOfDay());
+            } catch (Exception e) {
+                bill.setBillDate(LocalDateTime.now());
+            }
+        } else {
+            bill.setBillDate(LocalDateTime.now());
+        }
         bill.setCustomer(customer);
         
         if (billDTO.getSalesmanId() != null) {
@@ -150,6 +159,15 @@ public class BillingController {
             });
             
         bill.setCustomer(customer);
+        
+        if (billDTO.getBillDate() != null && !billDTO.getBillDate().trim().isEmpty()) {
+            try {
+                java.time.LocalDate ld = java.time.LocalDate.parse(billDTO.getBillDate());
+                bill.setBillDate(ld.atStartOfDay());
+            } catch (Exception e) {
+                // ignore, keep existing
+            }
+        }
         
         if (billDTO.getSalesmanId() != null) {
             bill.setSalesman(salesmanRepository.findById(billDTO.getSalesmanId()).orElse(null));

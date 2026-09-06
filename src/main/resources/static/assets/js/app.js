@@ -1198,6 +1198,8 @@ async function editEntry(id, currentData) {
     editingSalesRecordDate = record.entryDate;
     currentBillItems = [];
     
+    document.getElementById('voucherDate').value = record.entryDate ? record.entryDate.split('T')[0] : getLocalDateString();
+    
     document.getElementById('billCustomerName').value = record.customerName;
     document.getElementById('billContact').value = record.contactNumber;
     document.getElementById('billCity').value = record.city || '';
@@ -2552,6 +2554,7 @@ async function openNewBill(voucherType = 'SALES') {
     editingBillId = null;
     editingSalesRecordId = null;
     currentBillItems = [];
+    document.getElementById('voucherDate').value = getLocalDateString();
     document.getElementById('billCustomerName').value = '';
     document.getElementById('billContact').value = '';
     document.getElementById('billCity').value = '';
@@ -2691,6 +2694,7 @@ async function editBill(bill) {
     editingBillId = bill.id;
     editingSalesRecordId = null;
     currentBillItems = [];
+    document.getElementById('voucherDate').value = bill.billDate ? bill.billDate.split('T')[0] : getLocalDateString();
     document.getElementById('billProductSelect').value = '';
     document.getElementById('billItemPrice').value = '';
     document.getElementById('billItemQty').value = '';
@@ -3083,7 +3087,8 @@ document.getElementById('btnSaveBill').addEventListener('click', async () => {
             remarks: remarks,
             city: document.getElementById('billCity').value,
             isProductReturn: isReturn,
-            returnType: returnType
+            returnType: returnType,
+            entryDate: document.getElementById('voucherDate').value || getLocalDateString()
         };
         
         if (!payload.customerName || !payload.contactNumber) {
@@ -3100,7 +3105,6 @@ document.getElementById('btnSaveBill').addEventListener('click', async () => {
                 // When editing a payment, we use the generic /api/sales/{id} endpoint
                 url = `/api/sales/${editingSalesRecordId}`;
                 // Adapt payload for SalesRecord
-                payload.entryDate = editingSalesRecordDate || getLocalDateString();
                 payload.billAmount = 0;
                 payload.discount = 0;
                 payload.netAmount = 0;
@@ -3142,6 +3146,7 @@ document.getElementById('btnSaveBill').addEventListener('click', async () => {
         contactNumber: document.getElementById('billContact').value,
         city: document.getElementById('billCity').value,
         salesmanId: document.getElementById('billSalesman').value || null,
+        billDate: document.getElementById('voucherDate').value || getLocalDateString(),
         totalAmount: parseCurrency(document.getElementById('billTotalAmount').innerText),
         discount: parseCurrency(document.getElementById('billDiscount').value) || 0,
         expenses: document.getElementById('billHasExpenses').checked ? (parseCurrency(document.getElementById('billExpenses').value) || 0) : 0,

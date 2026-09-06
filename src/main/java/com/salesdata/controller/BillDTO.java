@@ -18,6 +18,7 @@ public class BillDTO {
     private BigDecimal expenses;
     private BigDecimal netAmount;
     private BigDecimal paidAmount;
+    private String billDate;
     
     private List<BillItemDTO> items;
 }
