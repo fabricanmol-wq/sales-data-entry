@@ -4,7 +4,7 @@ function capitalizeWords(str) {
 }
 
 document.addEventListener('blur', function(e) {
-    if (e.target && e.target.matches('input[type="text"]:not(#globalSearchInput):not([autocapitalize="none"])')) {
+    if (e.target && typeof e.target.matches === 'function' && e.target.matches('input[type="text"]:not(#globalSearchInput):not([autocapitalize="none"])')) {
         e.target.value = capitalizeWords(e.target.value);
     }
 }, true);
@@ -1175,8 +1175,10 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('click', (e) => {
-    if (!e.target.closest('.position-relative') && !e.target.closest('.dropdown')) {
-        document.querySelectorAll('.autofill-customer + .dropdown-menu.show, .autofill-contact + .dropdown-menu.show, .autofill-city + .dropdown-menu.show').forEach(dd => dd.classList.remove('show'));
+    if (e.target && typeof e.target.closest === 'function') {
+        if (!e.target.closest('.position-relative') && !e.target.closest('.dropdown')) {
+            document.querySelectorAll('.autofill-customer + .dropdown-menu.show, .autofill-contact + .dropdown-menu.show, .autofill-city + .dropdown-menu.show').forEach(dd => dd.classList.remove('show'));
+        }
     }
 });
 
