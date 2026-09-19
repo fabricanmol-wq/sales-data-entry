@@ -657,9 +657,11 @@ async function loadDashboard() {
     const tbody = document.querySelector('#recentEntriesTable tbody');
     if (tbody) {
         tbody.innerHTML = '';
+        let html_tbody = '';
         data.recentEntries.forEach(r => {
-            tbody.innerHTML += `<tr><td>${r.entryDate}</td><td>${escapeHTML(r.customerName)}</td><td>${appSettings.currencySymbol}${formatCurrency(r.netAmount)}</td></tr>`;
+            html_tbody += `<tr><td>${r.entryDate}</td><td>${escapeHTML(r.customerName)}</td><td>${appSettings.currencySymbol}${formatCurrency(r.netAmount)}</td></tr>`;
         });
+        tbody.innerHTML += html_tbody;
     }
 }
 
@@ -885,6 +887,7 @@ async function loadEntries() {
 
     if (!data || !data.content) return;
     
+        let html_tbody = '';
     data.content.forEach(r => {
         const salesmanName = r.salesman ? r.salesman.name : '';
         let actions = '';
@@ -923,7 +926,7 @@ async function loadEntries() {
             displayCreditPending = 0; // The user wants this to display as 0
         }
 
-        tbody.innerHTML += `<tr class="${rowClass}">
+        html_tbody += `<tr class="${rowClass}">
             <td>${r.id}</td>
             <td>${typeBadge}</td>
             <td>${r.entryDate}</td>
@@ -951,6 +954,7 @@ async function loadEntries() {
         sumCredit += creditPending;
         sumQty += r.quantity || 0;
     });
+        tbody.innerHTML += html_tbody;
     
     document.getElementById('totalQty').textContent = sumQty;
     document.getElementById('totalBillAmt').textContent = appSettings.currencySymbol + formatCurrency(sumBill);
@@ -1335,11 +1339,12 @@ async function loadUniqueCustomersTable() {
         
         let sumPendingCredit = 0;
         
+        let html_tbody = '';
         filteredCustomers.forEach(c => {
             if (!c.customerName) return;
             const displayCredit = Math.max(0, c.totalCredit || 0);
             sumPendingCredit += displayCredit;
-            tbody.innerHTML += `<tr>
+            html_tbody += `<tr>
                 <td><a href="#" class="customer-link" data-name="${escapeHTML(c.customerName)}" data-contact="${escapeHTML(c.contactNumber)}">${escapeHTML(c.customerName)}</a></td>
                 <td>${escapeHTML(c.contactNumber)}</td>
                 <td>${escapeHTML(c.city || '')}</td>
@@ -1352,6 +1357,7 @@ async function loadUniqueCustomersTable() {
                 </td>
             </tr>`;
         });
+        tbody.innerHTML += html_tbody;
         
         const totalEl = document.getElementById('customersTotalCreditAmt');
         if (totalEl) totalEl.textContent = appSettings.currencySymbol + formatCurrency(sumPendingCredit);
@@ -1626,6 +1632,7 @@ async function fetchAndRenderLedger() {
             <td class="text-end fund-col ${openingBalance > 0.001 ? 'text-warning' : (openingBalance < -0.001 ? 'text-success' : '')}">${openingStrRow}</td>
         </tr>`;
         
+        let html_tbody = '';
         ledgerLines.forEach(line => {
             if (!line.ignoreBalance) {
                 runningBalance += line.debit;
@@ -1641,7 +1648,7 @@ async function fetchAndRenderLedger() {
             let debitStr = line.debit > 0 ? formatCurrency(line.debit) : (line.debit < 0 ? formatCurrency(line.debit) : '');
             let creditStr = line.credit > 0 ? formatCurrency(line.credit) : (line.credit < 0 ? formatCurrency(line.credit) : '');
             
-            tbody.innerHTML += `<tr>
+            html_tbody += `<tr>
                 <td>${line.date}</td>
                 <td>${line.narration}</td>
                 <td class="text-end fund-col">${debitStr}</td>
@@ -1649,6 +1656,7 @@ async function fetchAndRenderLedger() {
                 <td class="text-end fw-bold text-warning fund-col">${balanceStr}</td>
             </tr>`;
         });
+        tbody.innerHTML += html_tbody;
         
         let openingStr = '0.00 DR';
         if (openingBalance > 0.001) openingStr = `${formatCurrency(openingBalance)} DR`;
@@ -1752,8 +1760,9 @@ async function loadUsers() {
     allUsers = await res.json();
     const tbody = document.getElementById('usersTableBody');
     tbody.innerHTML = '';
+        let html_tbody = '';
     allUsers.forEach(u => {
-        tbody.innerHTML += `<tr>
+        html_tbody += `<tr>
             <td>${u.id}</td>
             <td>${u.username}</td>
             <td>${u.role}</td>
@@ -1763,6 +1772,7 @@ async function loadUsers() {
             </td>
         </tr>`;
     });
+        tbody.innerHTML += html_tbody;
     document.querySelectorAll('.edit-user').forEach(b => b.addEventListener('click', e => editUser(e.target.dataset.id)));
     document.querySelectorAll('.delete-user').forEach(b => b.addEventListener('click', e => deleteEntry(e.target.dataset.id, 'user')));
 }
@@ -1809,8 +1819,9 @@ async function loadSalesmenGrid() {
     allSalesmen = await res.json();
     const tbody = document.getElementById('salesmenTableBody');
     tbody.innerHTML = '';
+        let html_tbody = '';
     allSalesmen.forEach(s => {
-        tbody.innerHTML += `<tr>
+        html_tbody += `<tr>
             <td>${s.id}</td>
             <td>${s.name}</td>
             <td>${s.status}</td>
@@ -1820,6 +1831,7 @@ async function loadSalesmenGrid() {
             </td>
         </tr>`;
     });
+        tbody.innerHTML += html_tbody;
     document.querySelectorAll('.edit-salesman').forEach(b => b.addEventListener('click', e => editSalesman(e.target.dataset.id)));
     document.querySelectorAll('.delete-salesman').forEach(b => b.addEventListener('click', e => deleteEntry(e.target.dataset.id, 'salesman')));
 }
@@ -2195,8 +2207,9 @@ async function loadErrorLogs() {
         const logs = await res.json();
         const tbody = document.querySelector('#errorLogsTable tbody');
         tbody.innerHTML = '';
+        let html_tbody = '';
         logs.forEach(l => {
-            tbody.innerHTML += `<tr>
+            html_tbody += `<tr>
                 <td>${new Date(l.timestamp).toLocaleString()}</td>
                 <td>${escapeHTML(l.errorMessage)}</td>
                 <td>${escapeHTML(l.pageUrl)}</td>
@@ -2204,6 +2217,7 @@ async function loadErrorLogs() {
                 <td><pre style="max-height: 100px; font-size: 10px;">${escapeHTML(l.stackTrace)}</pre></td>
             </tr>`;
         });
+        tbody.innerHTML += html_tbody;
     } catch(e) { showNotification('Failed to load logs', 'danger'); }
 }
 
@@ -2220,6 +2234,7 @@ async function loadCallingData() {
         const customers = await res.json();
         const tbody = document.querySelector('#callingTable tbody');
         tbody.innerHTML = '';
+        let html_tbody = '';
         customers.forEach(c => {
             let statusBadge = c.callStatus ? `<span class="badge bg-secondary">${c.callStatus}</span>` : '<span class="badge bg-warning text-dark">Pending</span>';
             if (c.callStatus === 'Attended') statusBadge = `<span class="badge bg-success">Attended</span>`;
@@ -2233,7 +2248,7 @@ async function loadCallingData() {
             else if (remarksText) combinedRemarks = remarksText;
             else combinedRemarks = '-';
 
-            tbody.innerHTML += `<tr>
+            html_tbody += `<tr>
                 <td class="fw-bold">${escapeHTML(c.customerName)}</td>
                 <td>${escapeHTML(c.contactNumber)}</td>
                 <td>${c.lastCallDate ? new Date(c.lastCallDate).toLocaleString() : '-'}</td>
@@ -2246,6 +2261,7 @@ async function loadCallingData() {
                 </td>
             </tr>`;
         });
+        tbody.innerHTML += html_tbody;
 
         document.querySelectorAll('.log-call-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -2328,6 +2344,7 @@ async function loadCallingReports() {
         
         const tbody = document.querySelector('#callingReportTable tbody');
         tbody.innerHTML = '';
+        let html_tbody = '';
         reports.forEach(r => {
             let statusBadge = r.callStatus === 'Attended' ? `<span class="badge bg-success">${r.callStatus}</span>` : `<span class="badge bg-danger">${r.callStatus || ''}</span>`;
             
@@ -2336,7 +2353,7 @@ async function loadCallingReports() {
             else if (r.callOutcome === 'Not Satisfied') outcomeBadge = `<span class="badge bg-danger">${r.callOutcome}</span>`;
             else if (r.callOutcome) outcomeBadge = `<span class="badge bg-warning text-dark">${r.callOutcome}</span>`;
             
-            tbody.innerHTML += `<tr>
+            html_tbody += `<tr>
                 <td>${r.id}</td>
                 <td class="fw-bold">${escapeHTML(r.customerName)}</td>
                 <td>${escapeHTML(r.contactNumber)}</td>
@@ -2351,6 +2368,7 @@ async function loadCallingReports() {
                 </td>
             </tr>`;
         });
+        tbody.innerHTML += html_tbody;
         document.querySelectorAll('.delete-call-btn').forEach(b => b.addEventListener('click', e => deleteEntry(e.currentTarget.dataset.id, 'callingReport')));
     } catch (e) {
         console.error('Failed to load calling reports', e);
@@ -2371,8 +2389,9 @@ async function loadStock() {
         productsList = await res.json();
         const tbody = document.querySelector('#stockTable tbody');
         tbody.innerHTML = '';
+        let html_tbody = '';
         productsList.forEach(p => {
-            tbody.innerHTML += `<tr>
+            html_tbody += `<tr>
                 <td>${p.id}</td>
                 <td>${p.itemName}</td>
                 <td>${p.shortcutKey || '-'}</td>
@@ -2382,6 +2401,7 @@ async function loadStock() {
                 </td>
             </tr>`;
         });
+        tbody.innerHTML += html_tbody;
     } catch (e) {
         showNotification('Failed to load stock', 'danger');
     }
@@ -2460,8 +2480,9 @@ async function loadBills() {
         const bills = await res.json();
         const tbody = document.querySelector('#billsTable tbody');
         tbody.innerHTML = '';
+        let html_tbody = '';
         bills.forEach(b => {
-            tbody.innerHTML += `<tr>
+            html_tbody += `<tr>
                 <td>#INV-${b.id}</td>
                 <td>${new Date(b.billDate).toLocaleString()}</td>
                 <td>${escapeHTML(b.customerName)}</td>
@@ -2480,6 +2501,7 @@ async function loadBills() {
                 </td>
             </tr>`;
         });
+        tbody.innerHTML += html_tbody;
     } catch (e) {
         showNotification('Failed to load bills', 'danger');
     }
@@ -2533,10 +2555,12 @@ async function loadProductsAndSalesmenForBill() {
         productsList = await resP.json();
         const prodSelect = document.getElementById('billProductSelect');
         prodSelect.innerHTML = '<option value="">Select Product...</option>';
+        let html_prodSelect = '';
         productsList.forEach(p => {
             const prefix = p.shortcutKey ? ` [${p.shortcutKey}]` : '';
-            prodSelect.innerHTML += `<option value="${p.id}" data-shortcut="${p.shortcutKey || ''}">${p.itemName}${prefix}</option>`;
+            html_prodSelect += `<option value="${p.id}" data-shortcut="${p.shortcutKey || ''}">${p.itemName}${prefix}</option>`;
         });
+        prodSelect.innerHTML += html_prodSelect;
     } catch(e) {}
     
     try {
@@ -2544,9 +2568,11 @@ async function loadProductsAndSalesmenForBill() {
         allSalesmen = await resS.json();
         const sSelect = document.getElementById('billSalesman');
         sSelect.innerHTML = '<option value="">Select Salesman...</option>';
+        let html_sSelect = '';
         allSalesmen.forEach(s => {
-            sSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+            html_sSelect += `<option value="${s.id}">${s.name}</option>`;
         });
+        sSelect.innerHTML += html_sSelect;
     } catch(e) {}
 }
 
@@ -2827,9 +2853,10 @@ function renderBillItems() {
     const tbody = document.querySelector('#billItemsTable tbody');
     tbody.innerHTML = '';
     let total = 0;
+        let html_tbody = '';
     currentBillItems.forEach((item, index) => {
         total += item.totalPrice;
-        tbody.innerHTML += `<tr>
+        html_tbody += `<tr>
             <td>${index + 1}</td>
             <td>${item.itemName}</td>
             <td>${appSettings.currencySymbol}${formatCurrency(item.unitPrice)}</td>
@@ -2838,6 +2865,7 @@ function renderBillItems() {
             <td><button class="btn btn-sm btn-danger" onclick="removeBillItem(${index})"><i class="bi bi-x"></i></button></td>
         </tr>`;
     });
+        tbody.innerHTML += html_tbody;
     
     document.getElementById('billTotalAmount').innerText = formatCurrency(total);
     calculateBill();
@@ -3255,9 +3283,10 @@ window.generateInvoiceHtml = function(bill, itemsDetails, prefix = "INV-") {
 
     const tbody = document.getElementById('invItemsTable');
     tbody.innerHTML = '';
+        let html_tbody = '';
     itemsDetails.forEach((item, index) => {
         let name = item.itemName || (item.product ? item.product.itemName : 'Product');
-        tbody.innerHTML += `<tr>
+        html_tbody += `<tr>
             <td class="text-start">${index + 1}</td>
             <td class="text-start fw-medium">${name}</td>
             <td class="text-center">${item.quantity}</td>
@@ -3265,6 +3294,7 @@ window.generateInvoiceHtml = function(bill, itemsDetails, prefix = "INV-") {
             <td class="text-end fw-bold">${appSettings.currencySymbol}${formatCurrency(item.totalPrice)}</td>
         </tr>`;
     });
+        tbody.innerHTML += html_tbody;
 
     document.getElementById('invSubtotal').innerText = appSettings.currencySymbol + formatCurrency(bill.totalAmount);
     
@@ -3444,6 +3474,7 @@ async function loadPermissionsMatrix() {
         if(!container) return; // safety
         container.innerHTML = '';
         
+        let html_container = '';
         matrixRoles.forEach(role => {
             let roleHtml = `
             <div class="card mb-4 border-secondary">
@@ -3486,8 +3517,9 @@ async function loadPermissionsMatrix() {
             });
             
             roleHtml += `</tbody></table></div></div>`;
-            container.innerHTML += roleHtml;
+            html_container += roleHtml;
         });
+        container.innerHTML += html_container;
     } catch (e) {
         showNotification('Error loading permissions matrix: ' + e.message, 'danger');
         console.error(e);
@@ -3830,12 +3862,13 @@ window.loadDashboardDetails = async function(cardType) {
             return;
         }
         
+        let html_tbody = '';
         records.forEach(c => {
             let statusBadge = c.callStatus ? `<span class=\"badge bg-secondary\">${c.callStatus}</span>` : '-';
             if (c.callStatus === 'Attended') statusBadge = `<span class=\"badge bg-success\">Attended</span>`;
             if (c.callStatus === 'Not Attended') statusBadge = `<span class=\"badge bg-danger\">Not Attended</span>`;
             
-            tbody.innerHTML += `<tr>
+            html_tbody += `<tr>
                 <td class=\"fw-bold\">${escapeHTML(c.customerName || '')}</td>
                 <td>${escapeHTML(c.contactNumber || '')}</td>
                 <td>${c.callDate ? new Date(c.callDate).toLocaleString() : '-'}</td>
@@ -3846,6 +3879,7 @@ window.loadDashboardDetails = async function(cardType) {
                 <td>${escapeHTML(c.remarks || '-')}</td>
             </tr>`;
         });
+        tbody.innerHTML += html_tbody;
         
         // Scroll down to the table so user can see it
         document.getElementById('dashboardDetailsContainer').scrollIntoView({ behavior: 'smooth' });
@@ -3928,9 +3962,11 @@ window.editCustomer = async function(id) {
         }
         
         if (allSalesmen) {
+        let html_sSelect = '';
             allSalesmen.forEach(s => {
-                sSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+                html_sSelect += `<option value="${s.id}">${s.name}</option>`;
             });
+        sSelect.innerHTML += html_sSelect;
         }
         
         if (c.nextSalesmanId) {
@@ -3959,6 +3995,7 @@ async function loadSupportTickets() {
         
         const tbody = document.querySelector('#supportTicketTable tbody');
         tbody.innerHTML = '';
+        let html_tbody = '';
         tickets.forEach(t => {
             let actionBtn = '';
             let statusBadge = `<span class="badge bg-danger">OPEN</span>`;
@@ -3969,7 +4006,7 @@ async function loadSupportTickets() {
                 actionBtn = `<span class="text-muted">Solved</span>`;
             }
 
-            tbody.innerHTML += `
+            html_tbody += `
             <tr>
                 <td>${t.id}</td>
                 <td>${escapeHTML(t.customerName)}</td>
@@ -3981,6 +4018,7 @@ async function loadSupportTickets() {
                 <td>${actionBtn}</td>
             </tr>`;
         });
+        tbody.innerHTML += html_tbody;
         updateSupportTicketBadge();
     } catch (e) {
         console.error(e);
