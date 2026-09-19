@@ -1,7 +1,7 @@
 package com.salesdata.tasks;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
+
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -11,20 +11,12 @@ public class KeepAliveTask {
 
     private final String RENDER_APP_URL = "https://sales-data-entry.onrender.com";
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+
 
     // Ping every 2 minutes (120,000 milliseconds) to prevent Neon Postgres Serverless Auto-Suspend and keep connections hot
     @Scheduled(fixedRate = 120000)
     public void pingRenderAppAndDatabase() {
-        // 1. Keep Database Connection Pool & Neon Compute Warm
-        try {
-            jdbcTemplate.queryForObject("SELECT 1", Integer.class);
-            jdbcTemplate.queryForObject("SELECT count(*) FROM sales_records", Integer.class);
-            System.out.println("KeepAliveTask: Successfully warmed up database connection and cache.");
-        } catch (Exception e) {
-            System.out.println("KeepAliveTask: Database keep-alive ping failed - " + e.getMessage());
-        }
+        // 1. Database Connection Ping REMOVED to allow Neon to Auto-Suspend (Scale to Zero)
 
         // 2. Keep Render Web App Awake
         try {
